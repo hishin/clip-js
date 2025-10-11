@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TextElement } from '../../../../types';
 import { useAppDispatch, useAppSelector } from '../../../../store';
 import { setResolution, setTextElements } from '../../../../store/slices/projectSlice';
+import { generateNextClipId } from '../../../../utils/utils';
 import toast from 'react-hot-toast';
 
 export default function AddTextButton() {
@@ -22,7 +23,7 @@ export default function AddTextButton() {
         rotation: 0,
         animation: 'none'
     });
-    const { textElements } = useAppSelector((state) => state.projectState);
+    const { textElements, mediaFiles } = useAppSelector((state) => state.projectState);
     const dispatch = useAppDispatch();
 
     const onAddText = (textElement: TextElement) => {
@@ -33,7 +34,7 @@ export default function AddTextButton() {
         const lastEnd = textElements.length > 0 ? Math.max(...textElements.map(f => f.positionEnd)) : 0;
 
         const newTextElement: TextElement = {
-            id: crypto.randomUUID(),
+            id: generateNextClipId([...mediaFiles, ...textElements], 'text'),
             text: textConfig.text || '',
             positionStart: lastEnd || 0,
             positionEnd: lastEnd + 10 || 10,

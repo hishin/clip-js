@@ -3,8 +3,43 @@ export type MediaType = "video" | "audio" | "image" | "unknown";
 export interface UploadedFile {
   id: string;
   file: File;
+  fileName?: string;
   type?: MediaType;
   src?: string;
+}
+
+export interface SourceFileAlias {
+  fileName: string;
+  alias: string;
+}
+
+// A lightweight, serializable object for our source files' metadata
+export interface FileInfo {
+  fileId: string;
+  fileName: string;
+  alias: string;
+  type: MediaType;
+  src?: string;
+  videoMapIndex?: number;
+  metadata?: Record<string, any>;
+}
+
+// For backend communication
+export interface TimelineClip {
+  clipId: string;
+  sourceFileAlias?: string; // e.g., "video-1"
+  timelineStartMs: number;
+  timelineEndMs: number;
+  sourceStartMs: number;
+  sourceEndMs: number;
+  text?: string;
+}
+
+// The context object to be sent to the backend
+export interface TimelineContext {
+  timeline: TimelineClip[];
+  playheadPositionMs: number;
+  totalDurationMs: number;
 }
 
 export interface MediaFile {
@@ -85,7 +120,7 @@ export interface ProjectState {
   id: string;
   mediaFiles: MediaFile[];
   textElements: TextElement[];
-  filesID?: string[];
+  sourceFiles: FileInfo[];
   currentTime: number;
   isPlaying: boolean;
   isMuted: boolean;

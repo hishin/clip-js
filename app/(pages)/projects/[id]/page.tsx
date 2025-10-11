@@ -24,7 +24,8 @@ import ExportList from "../../../components/editor/AssetsPanel/tools-section/Exp
 import Image from "next/image";
 import ProjectName from "../../../components/editor/player/ProjectName";
 import { ChatPanel, Message } from "@/app/components/editor/chat";
-import { createWebSocketConnection } from "@/app/utils/backend";
+import { createWebSocketConnection, buildTimelineContext } from "@/app/utils/backend";
+import { executeAction, actionSchemas } from "@/app/actions";
 import toast from "react-hot-toast";
 export default function Project({ params }: { params: { id: string } }) {
     const { id } = params;
@@ -39,6 +40,10 @@ export default function Project({ params }: { params: { id: string } }) {
     const [isWsConnected, setIsWsConnected] = useState(false);
     const [isWsConnecting, setIsWsConnecting] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
+    
+    // Refs to prevent stale closure in WebSocket handlers
+    const projectStateRef = useRef(projectState);
+    const dispatchRef = useRef(dispatch);
 
     const router = useRouter();
     const { activeSection, activeElement } = projectState;
@@ -90,25 +95,127 @@ export default function Project({ params }: { params: { id: string } }) {
         saveProject();
     }, [projectState, dispatch]);
 
+    // Keep refs updated to prevent stale closures in WebSocket handlers
+    useEffect(() => {
+        projectStateRef.current = projectState;
+        dispatchRef.current = dispatch;
+    }, [projectState, dispatch]);
+
     // WebSocket connection - connects when project editor loads
     useEffect(() => {
         if (!id) return;
 
+        // Guard to prevent double connection in React Strict Mode
+        let mounted = true;
+
         const connectWebSocket = () => {
+            if (!mounted) return;  // Don't connect if already unmounted
+            
             setIsWsConnecting(true);
             
             // Use the backend utility to create WebSocket connection
             const ws = createWebSocketConnection(id);
 
             ws.onopen = () => {
+                if (!mounted) {
+                    // If component unmounted while connecting, close immediately
+                    ws.close();
+                    return;
+                }
+                
                 console.log("✅ WebSocket connected for project:", id);
                 setIsWsConnected(true);
                 setIsWsConnecting(false);
+                
+                // Register all actions from registry
+                const registerMessage = {
+                    type: "register_actions",
+                    actions: actionSchemas
+                };
+                
+                console.log(`📤 WS SEND [register_actions]:`, {
+                    type: registerMessage.type,
+                    actionCount: actionSchemas.length,
+                    actionNames: actionSchemas.map(s => s.name)
+                });
+                
+                ws.send(JSON.stringify(registerMessage));
             };
 
-            ws.onmessage = (event) => {
+            ws.onmessage = async (event) => {
+                if (!mounted) return;  // Ignore messages if unmounted
+                
                 try {
                     const data = JSON.parse(event.data);
+                    
+                    console.log(`📩 WS RECEIVE [${data.type}]:`, data);
+                    
+                    // Handle frontend action requests
+                    if (data.type === "frontend_action") {
+                        const { action, parameters, action_id } = data;
+                        
+                        console.log(`🎬 FRONTEND ACTION EXECUTE [${action}]:`, {
+                            action_id,
+                            parameters,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        // Execute using registry
+                        const startTime = performance.now();
+                        const result = await executeAction(action, parameters, {
+                            projectState: projectStateRef.current,
+                            dispatch: dispatchRef.current
+                        });
+                        const duration = performance.now() - startTime;
+                        
+                        console.log(`🎬 FRONTEND ACTION COMPLETE [${action}]:`, {
+                            action_id,
+                            duration: `${duration.toFixed(2)}ms`,
+                            success: result.success,
+                            result
+                        });
+                        
+                        // Send result back to backend
+                        const resultMessage = {
+                            type: "frontend_result",
+                            action_id: action_id,
+                            action: action,
+                            result: result
+                        };
+                        
+                        console.log(`📤 WS SEND [frontend_result]:`, resultMessage);
+                        ws.send(JSON.stringify(resultMessage));
+                        
+                        // Show toast notification
+                        if (result.success) {
+                            toast.success(`Action ${action} completed`);
+                        } else {
+                            toast.error(result.error || `Action ${action} failed`);
+                        }
+                        
+                        return;  // Don't process as chat message
+                    }
+                    
+                    // Handle other message types
+                    if (data.type === "actions_registered") {
+                        console.log(`✅ Actions registered: ${data.count} actions`);
+                        return;
+                    }
+                    
+                    if (data.type === "tool_execution_start") {
+                        console.log(`🔧 Backend executing tools:`, data.tools);
+                        return;
+                    }
+                    
+                    if (data.type === "llm_switched") {
+                        console.log(`🤖 LLM switched to:`, {
+                            provider: data.provider,
+                            model: data.model
+                        });
+                        return;
+                    }
+                    
+                    // Handle regular chat messages
                     const newMessage: Message = {
                         id: Date.now().toString(),
                         type: data.type === "error" ? "error" : "assistant",
@@ -117,21 +224,25 @@ export default function Project({ params }: { params: { id: string } }) {
                     };
                     setMessages((prev) => [...prev, newMessage]);
                 } catch (error) {
-                    console.error("Error parsing message:", error);
+                    console.error("❌ Error parsing WS message:", error, event.data);
                 }
             };
 
             ws.onerror = (error) => {
                 console.error("❌ WebSocket error:", error);
-                setIsWsConnected(false);
-                setIsWsConnecting(false);
-                toast.error("Chat connection error");
+                if (mounted) {
+                    setIsWsConnected(false);
+                    setIsWsConnecting(false);
+                    toast.error("Chat connection error");
+                }
             };
 
             ws.onclose = () => {
                 console.log("🔌 WebSocket disconnected");
-                setIsWsConnected(false);
-                setIsWsConnecting(false);
+                if (mounted) {
+                    setIsWsConnected(false);
+                    setIsWsConnecting(false);
+                }
             };
 
             wsRef.current = ws;
@@ -141,6 +252,7 @@ export default function Project({ params }: { params: { id: string } }) {
 
         // Cleanup on unmount
         return () => {
+            mounted = false;  // Mark as unmounted
             if (wsRef.current) {
                 console.log("🔌 Closing WebSocket connection for project:", id);
                 wsRef.current.close();
@@ -169,21 +281,30 @@ export default function Project({ params }: { params: { id: string } }) {
         };
         setMessages((prev) => [...prev, userMessage]);
 
-        // Send message to backend with proper format
+        // Send message to backend with clean timeline context
         try {
-            wsRef.current.send(
-                JSON.stringify({
-                    type: "user_message",
-                    content: message,
-                    context: {
-                        // Add timeline state context if needed
-                        timeline: projectState,
-                        playhead: 0, // TODO: get actual playhead position
-                    },
-                })
+            const timelineContext = buildTimelineContext(
+                projectStateRef.current,
+                projectStateRef.current.currentTime
             );
+            
+            const messagePayload = {
+                type: "user_message",
+                content: message,
+                context: timelineContext,
+            };
+            
+            console.log(`📤 WS SEND [user_message]:`, {
+                type: messagePayload.type,
+                contentLength: message.length,
+                clipCount: timelineContext.timeline.length,
+                playheadMs: timelineContext.playheadPositionMs,
+                totalDurationMs: timelineContext.totalDurationMs
+            });
+            
+            wsRef.current.send(JSON.stringify(messagePayload));
         } catch (error) {
-            console.error("Error sending message:", error);
+            console.error("❌ Error sending message:", error);
             toast.error("Failed to send message");
         }
     };

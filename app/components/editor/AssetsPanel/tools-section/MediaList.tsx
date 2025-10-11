@@ -1,55 +1,52 @@
 "use client";
 
 import { listFiles, deleteFile, useAppSelector, storeFile, getFile } from '@/app/store';
-import { setMediaFiles, setFilesID } from '@/app/store/slices/projectSlice';
-import { MediaFile, UploadedFile } from '@/app/types';
+import { setMediaFiles, setSourceFiles } from '@/app/store/slices/projectSlice';
+import { MediaFile, UploadedFile, FileInfo } from '@/app/types';
 import { useAppDispatch } from '@/app/store';
 import AddMedia from '../AddButtons/AddMedia';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 export default function MediaList() {
-    const { mediaFiles, filesID } = useAppSelector((state) => state.projectState);
+    const { mediaFiles, sourceFiles } = useAppSelector((state) => state.projectState);
     const dispatch = useAppDispatch();
     const [files, setFiles] = useState<UploadedFile[]>([]);
 
     useEffect(() => {
-        let mounted = true;
-
+        // The sourceFiles array now contains the necessary metadata like fileName.
+        // We still need to get the File object from IndexedDB to create a preview URL if needed,
+        // but for just displaying the name, sourceFiles is sufficient.
+        // For simplicity and consistency with potential future needs (like thumbnail previews),
+        // we'll continue to fetch the file object.
         const fetchFiles = async () => {
-            try {
-                const storedFilesArray: UploadedFile[] = [];
+            if (!sourceFiles) return;
 
-                for (const fileId of filesID || []) {
-                    const file = await getFile(fileId);
-                    if (file && mounted) {
-                        storedFilesArray.push({
-                            file: file,
-                            id: fileId,
-                        });
-                    }
-                }
+            const filesFromDB = await Promise.all(
+                sourceFiles.map(async (fileInfo: FileInfo) => {
+                    const file = await getFile(fileInfo.fileId);
+                    return {
+                        id: fileInfo.fileId,
+                        file: file, // This can be null if not found, handle gracefully
+                        fileName: fileInfo.fileName,
+                    };
+                })
+            );
 
-                if (mounted) {
-                    setFiles(storedFilesArray);
-                }
-            } catch (error) {
-                toast.error("Error fetching files");
-                console.error("Error fetching files:", error);
-            }
+            // Filter out any files that weren't found in IndexedDB
+            setFiles(filesFromDB.filter(f => f.file));
         };
 
         fetchFiles();
 
-        // Cleanup
-        return () => {
-            mounted = false;
-        };
-    }, [filesID]);
+    }, [sourceFiles]);
 
     const onDeleteMedia = async (id: string) => {
         const onUpdateMedia = mediaFiles.filter(f => f.fileId !== id);
         dispatch(setMediaFiles(onUpdateMedia));
-        dispatch(setFilesID(filesID?.filter(f => f !== id) || []));
+        
+        // Keep both states in sync on deletion
+        dispatch(setSourceFiles(sourceFiles?.filter(f => f.fileId !== id) || []));
+        
         await deleteFile(id);
     };
 
@@ -62,8 +59,8 @@ export default function MediaList() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2 flex-1 min-w-0">
                                     <AddMedia fileId={mediaFile.id} />
-                                    <span className="py-1 px-1 text-sm flex-1 truncate" title={mediaFile.file.name}>
-                                        {mediaFile.file.name}
+                                    <span className="py-1 px-1 text-sm flex-1 truncate" title={mediaFile.fileName}>
+                                        {mediaFile.fileName}
                                     </span>
                                 </div>
                                 <button

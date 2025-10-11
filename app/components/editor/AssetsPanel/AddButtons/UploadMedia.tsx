@@ -1,31 +1,52 @@
 "use client";
 
-import { listFiles, useAppDispatch, useAppSelector } from "../../../../store";
-import { setMediaFiles, setFilesID } from "../../../../store/slices/projectSlice";
+import {
+  useAppDispatch,
+  useAppSelector,
+} from "../../../../store";
+import {
+  setSourceFiles,
+} from "../../../../store/slices/projectSlice";
 import { storeFile } from "../../../../store";
-import { categorizeFile } from "../../../../utils/utils";
-import Image from 'next/image';
+import { categorizeFile, generateFileAlias } from "../../../../utils/utils";
+import Image from "next/image";
+import { FileInfo } from "@/app/types";
 
 export default function AddMedia() {
-    const { mediaFiles, filesID } = useAppSelector((state) => state.projectState);
-    const dispatch = useAppDispatch();
+  const { sourceFiles } = useAppSelector(
+    (state) => state.projectState
+  );
+  const dispatch = useAppDispatch();
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newFiles = Array.from(e.target.files || []);
-        const updatedFiles = [...filesID || []];
-        for (const file of newFiles) {
-            const fileId = crypto.randomUUID();
-            await storeFile(file, fileId);
-            updatedFiles.push(fileId)
-        }
-        dispatch(setFilesID(updatedFiles));
-        e.target.value = "";
-    };
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = Array.from(e.target.files || []);
+    if (newFiles.length === 0) return;
 
-    return (
-        <div
-        >
-            <label
+    const newSourceFiles: FileInfo[] = [...(sourceFiles || [])];
+    const existingAliases = newSourceFiles.map(f => f.alias);
+
+    for (const file of newFiles) {
+      const fileId = crypto.randomUUID();
+    
+      await storeFile(file, fileId);
+
+      const newFileInfo: FileInfo = {
+        fileId: fileId,
+        fileName: file.name,
+        alias: generateFileAlias(existingAliases, file.name),
+        type: categorizeFile(file.type),
+      };
+      newSourceFiles.push(newFileInfo);
+      existingAliases.push(newFileInfo.alias);
+    }
+
+    dispatch(setSourceFiles(newSourceFiles));
+    e.target.value = "";
+  };
+
+  return (
+    <div>
+      <label
                 htmlFor="file-upload"
                 className="cursor-pointer rounded-full bg-white border border-solid border-transparent transition-colors flex flex-row gap-2 items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-auto py-2 px-2 sm:px-5 sm:w-auto"
             >

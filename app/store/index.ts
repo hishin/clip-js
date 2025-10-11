@@ -154,13 +154,15 @@ export const deleteProject = async (projectId: string) => {
     }
 
     // Delete all associated media files from the files store
-    if (project.filesID && Array.isArray(project.filesID)) {
-      for (const fileId of project.filesID) {
+    if (project.sourceFiles && Array.isArray(project.sourceFiles)) {
+      for (const fileInfo of project.sourceFiles) {
         try {
-          await db.delete("files", fileId);
-          console.log(`Deleted media file ${fileId} for project ${projectId}`);
+          await db.delete("files", fileInfo.fileId);
+          console.log(
+            `Deleted media file ${fileInfo.fileId} for project ${projectId}`
+          );
         } catch (fileError) {
-          console.warn(`Failed to delete file ${fileId}:`, fileError);
+          console.warn(`Failed to delete file ${fileInfo.fileId}:`, fileError);
         }
       }
     }
@@ -201,8 +203,10 @@ export const cleanupOrphanedFiles = async () => {
     // Get all file IDs that are still associated with projects
     const activeFileIds = new Set<string>();
     projects.forEach((project) => {
-      if (project.filesID && Array.isArray(project.filesID)) {
-        project.filesID.forEach((fileId: string) => activeFileIds.add(fileId));
+      if (project.sourceFiles && Array.isArray(project.sourceFiles)) {
+        project.sourceFiles.forEach((fileInfo: any) =>
+          activeFileIds.add(fileInfo.fileId)
+        );
       }
     });
 

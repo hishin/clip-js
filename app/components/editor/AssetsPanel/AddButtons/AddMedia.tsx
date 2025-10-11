@@ -3,19 +3,23 @@
 import { getFile, useAppDispatch, useAppSelector } from "../../../../store";
 import { setMediaFiles } from "../../../../store/slices/projectSlice";
 import { storeFile } from "../../../../store";
-import { categorizeFile } from "../../../../utils/utils";
+import { categorizeFile, generateNextClipId } from "../../../../utils/utils";
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 export default function AddMedia({ fileId }: { fileId: string }) {
-    const { mediaFiles } = useAppSelector((state) => state.projectState);
+    const { mediaFiles, textElements } = useAppSelector((state) => state.projectState);
     const dispatch = useAppDispatch();
 
     const handleFileChange = async () => {
         const updatedMedia = [...mediaFiles];
 
         const file = await getFile(fileId);
-        const mediaId = crypto.randomUUID();
+        const mediaType = categorizeFile(file.type);
+        const mediaId = generateNextClipId(
+            [...mediaFiles, ...textElements],
+            mediaType
+        );
 
         if (fileId) {
             const relevantClips = mediaFiles.filter(clip => clip.type === categorizeFile(file.type));
@@ -42,7 +46,7 @@ export default function AddMedia({ fileId }: { fileId: string }) {
                 crop: { x: 0, y: 0, width: 1920, height: 1080 },
                 playbackSpeed: 1,
                 volume: 100,
-                type: categorizeFile(file.type),
+                type: mediaType,
                 zIndex: 0,
             });
         }

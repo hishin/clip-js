@@ -5,16 +5,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAppDispatch, useAppSelector } from '../../store';
 import { addProject, deleteProject, rehydrateProjects, setCurrentProject, updateProject } from '../../store/slices/projectsSlice';
-import { setFilesID } from '../../store/slices/projectSlice';
+import { setSourceFiles } from '../../store/slices/projectSlice';
 import { listProjects, storeProject, deleteProject as deleteProjectFromDB, storeFile } from '../../store';
-import { ProjectState } from '../../types';
+import { ProjectState, FileInfo } from '../../types';
 import { toast } from 'react-hot-toast';
 import { connectToBackend, createProjectInBackend, deleteProjectFromBackend } from '../../utils/backend';
+import { generateFileAlias, categorizeFile } from '../../utils/utils';
 
 // Function to automatically upload media files from a directory
-const autoUploadMediaFiles = async (projectDirectoryHandle: FileSystemDirectoryHandle, projectDirectoryPath: string): Promise<{fileIds: string[], filesIDToFileInfoMap: Record<string, any>}> => {
-    const uploadedFileIds: string[] = [];
-    const filesIDToFileInfoMap: Record<string, any> = {};
+const autoUploadMediaFiles = async (
+    projectDirectoryHandle: FileSystemDirectoryHandle, 
+    projectDirectoryPath: string,
+    existingAliases: string[]
+): Promise<FileInfo[]> => {
+    const uploadedFiles: FileInfo[] = [];
     
     try {
         // First, try to read video_id_map.json from the project directory
@@ -37,16 +41,18 @@ const autoUploadMediaFiles = async (projectDirectoryHandle: FileSystemDirectoryH
             if (entry.kind === 'file') {
                 const file = await entry.getFile();
                 const fileId = crypto.randomUUID();
-                
+                const alias = generateFileAlias(existingAliases, file.name);
+
                 await storeFile(file, fileId);
-                uploadedFileIds.push(fileId);
+                existingAliases.push(alias);
                 
-                // Create FileInfo object with mapping data if available
-                const fileInfo: any = {
+                // Create FileInfo object
+                const fileInfo: FileInfo = {
+                    fileId: fileId,
                     fileName: file.name,
-                    filePath: `${projectDirectoryPath}/videos/${file.name}`, // Construct absolute path using project directory
-                    dbIndex: uploadedFileIds.length - 1, // Index in the uploaded files array
-                    videoMapIndex: -1, // Default value
+                    alias: alias,
+                    type: categorizeFile(file.type),
+                    videoMapIndex: -1, // filled in below by reading video_id_map.json
                     metadata: {}
                 };
                 
@@ -57,25 +63,25 @@ const autoUploadMediaFiles = async (projectDirectoryHandle: FileSystemDirectoryH
                 if (videoMapEntry) {
                     const [videoMapIndex, data] = videoMapEntry;
                     fileInfo.videoMapIndex = parseInt(videoMapIndex);
-                    fileInfo.metadata.walnut_id = data.walnut_id;
+                    fileInfo.metadata = { walnut_id: data.walnut_id };
                     console.log(`Matched file "${file.name}" (basename: "${fileBasename}") with videoMapIndex ${videoMapIndex} and walnut_id ${data.walnut_id}`);
                 } else {
                     console.log(`No mapping found for file "${file.name}" (basename: "${fileBasename}")`);
                 }
                 
-                filesIDToFileInfoMap[fileId] = fileInfo;
+                uploadedFiles.push(fileInfo);
                 
                 console.log(`Uploaded media file "${file.name}" with ID ${fileId}`);
             }
         }
         
-        console.log(`Successfully uploaded ${uploadedFileIds.length} media files with ${Object.keys(filesIDToFileInfoMap).length} file info mappings`);
+        console.log(`Successfully uploaded ${uploadedFiles.length} media files.`);
     } catch (error) {
         console.error(`Error uploading media files:`, error);
         throw error;
     }
     
-    return { fileIds: uploadedFileIds, filesIDToFileInfoMap };
+    return uploadedFiles;
 };
 
 export default function Projects() {
@@ -152,7 +158,7 @@ export default function Projects() {
             activeSection: 'media',
             activeElement: 'text',
             activeElementIndex: 0,
-            filesID: [],
+            sourceFiles: [],
             zoomLevel: 1,
             timelineZoom: 100,
             enableMarkerTracking: true,
@@ -177,29 +183,32 @@ export default function Projects() {
             dispatch(addProject(newProject));
 
             // Auto-upload media files from videos subdirectory
-            let uploadedFilesCount = 0;
-            let filesIDToFileInfoMap: Record<string, any> = {};
+            let sourceFiles: FileInfo[] = [];
             if (directoryHandle) {
                 try {
+                    const existingAliases: string[] = [];
+
                     // Pass the project directory and path to autoUploadMediaFiles
-                    const uploadResult = await autoUploadMediaFiles(directoryHandle, selectedDirectoryPath);
-                    uploadedFilesCount = uploadResult.fileIds.length;
-                    filesIDToFileInfoMap = uploadResult.filesIDToFileInfoMap;
+                    sourceFiles = await autoUploadMediaFiles(
+                        directoryHandle, 
+                        selectedDirectoryPath,
+                        existingAliases
+                    );
                     
-                    // Update the project with the uploaded file IDs (same as UploadMedia.handleFileChange)
+                    // Update the project with the uploaded file info
                     const updatedProject = {
                         ...newProject,
-                        filesID: uploadResult.fileIds
+                        sourceFiles: sourceFiles
                     };
                     
                     // Update the project in storage and state
                     await storeProject(updatedProject);
                     dispatch(updateProject(updatedProject));
                     
-                    // Update Redux state for current project (same as UploadMedia.handleFileChange)
-                    dispatch(setFilesID(uploadResult.fileIds));
+                    // Update Redux state for current project
+                    dispatch(setSourceFiles(sourceFiles));
                     
-                    console.log(`Successfully uploaded ${uploadedFilesCount} media files from videos directory`);
+                    console.log(`Successfully uploaded ${sourceFiles.length} media files from videos directory`);
                 } catch (error) {
                     console.warn('Could not access videos directory or upload files:', error);
                     console.log('Project created without auto-uploading media files');
@@ -211,13 +220,13 @@ export default function Projects() {
                 projectId,
                 newProjectName,
                 selectedDirectoryPath,
-                filesIDToFileInfoMap
+                sourceFiles // Pass the array of FileInfo
             );
 
             if (backendSuccess) {
-                toast.success(`Project created and registered with backend successfully. ${uploadedFilesCount} media files uploaded.`);
+                toast.success(`Project created and registered with backend successfully. ${sourceFiles.length} media files uploaded.`);
             } else {
-                toast.success(`Project created locally (backend registration failed). ${uploadedFilesCount} media files uploaded.`);
+                toast.success(`Project created locally (backend registration failed). ${sourceFiles.length} media files uploaded.`);
             }
 
             // Clear form

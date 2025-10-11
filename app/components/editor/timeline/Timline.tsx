@@ -10,6 +10,7 @@ import AudioTimeline from "./elements-timeline/AudioTimline";
 import TextTimeline from "./elements-timeline/TextTimeline";
 import { throttle } from 'lodash';
 import GlobalKeyHandlerProps from "../../../components/editor/keys/GlobalKeyHandlerProps";
+import { generateNextClipId } from "@/app/utils/utils";
 import toast from "react-hot-toast";
 export const Timeline = () => {
     const { currentTime, timelineZoom, enableMarkerTracking, activeElement, activeElementIndex, mediaFiles, textElements, duration, isPlaying } = useAppSelector((state) => state.projectState);
@@ -60,7 +61,7 @@ export const Timeline = () => {
 
             const firstPart = {
                 ...element,
-                id: crypto.randomUUID(),
+                id: generateNextClipId([...mediaFiles, ...textElements], element.type),
                 positionStart,
                 positionEnd: currentTime,
                 startTime,
@@ -69,7 +70,7 @@ export const Timeline = () => {
 
             const secondPart = {
                 ...element,
-                id: crypto.randomUUID(),
+                id: generateNextClipId([...mediaFiles, ...textElements, firstPart], element.type),
                 positionStart: currentTime,
                 positionEnd,
                 startTime: splitSourceOffset,
@@ -96,14 +97,14 @@ export const Timeline = () => {
 
             const firstPart = {
                 ...element,
-                id: crypto.randomUUID(),
+                id: generateNextClipId([...mediaFiles, ...textElements], 'text'),
                 positionStart,
                 positionEnd: currentTime,
             };
 
             const secondPart = {
                 ...element,
-                id: crypto.randomUUID(),
+                id: generateNextClipId([...mediaFiles, ...textElements, firstPart], 'text'),
                 positionStart: currentTime,
                 positionEnd,
             };
@@ -138,9 +139,16 @@ export const Timeline = () => {
             return;
         }
 
+        const elementType = activeElement === 'text' 
+            ? 'text' 
+            : ('type' in element ? element.type : 'video');
+        
         const duplicatedElement = {
             ...element,
-            id: crypto.randomUUID(),
+            id: generateNextClipId(
+                [...mediaFiles, ...textElements],
+                elementType
+            ),
         };
 
         if (elements) {

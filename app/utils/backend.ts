@@ -1,3 +1,12 @@
+import {
+  FileInfo,
+  TimelineContext,
+  TimelineClip,
+  ProjectState,
+  MediaFile,
+  TextElement,
+} from "../types";
+
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -28,7 +37,7 @@ export async function createProjectInBackend(
   projectId: string,
   projectName: string,
   directoryPath: string,
-  filesIDToFileInfoMap: Record<string, any> = {}
+  sourceFiles: FileInfo[] = []
 ): Promise<boolean> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/v1/projects`, {
@@ -40,7 +49,7 @@ export async function createProjectInBackend(
         id: projectId,
         projectName: projectName,
         directoryPath: directoryPath,
-        filesIDToFileInfoMap: filesIDToFileInfoMap,
+        sourceFiles: sourceFiles,
       }),
     });
 
@@ -106,6 +115,57 @@ export function createWebSocketConnection(projectId: string): WebSocket {
   const wsUrl = getWebSocketUrl(projectId);
   console.log(`🔌 Connecting to WebSocket: ${wsUrl}`);
   return new WebSocket(wsUrl);
+}
+
+/**
+ * Converts the frontend project state into a clean timeline context for backend communication
+ */
+export function buildTimelineContext(
+  projectState: ProjectState,
+  currentTime: number
+): TimelineContext {
+  const timelineClips: TimelineClip[] = [];
+
+  // Convert media files (video/audio) to TimelineClip format
+  projectState.mediaFiles.forEach((media: MediaFile) => {
+    // Find the alias for this media file from sourceFiles
+    const sourceFile = projectState.sourceFiles.find(
+      (sf) => sf.fileId === media.fileId
+    );
+    const alias = sourceFile?.alias;
+
+    timelineClips.push({
+      clipId: media.id,
+      sourceFileAlias: alias, // e.g., "video-1", "audio-1"
+      timelineStartMs: media.positionStart * 1000, // Convert seconds to ms
+      timelineEndMs: media.positionEnd * 1000,
+      sourceStartMs: media.startTime * 1000,
+      sourceEndMs: media.endTime * 1000,
+      // text field omitted for media clips
+    });
+  });
+
+  // Convert text elements to TimelineClip format
+  projectState.textElements.forEach((text: TextElement) => {
+    timelineClips.push({
+      clipId: text.id,
+      // sourceFileAlias omitted for text elements
+      timelineStartMs: text.positionStart * 1000,
+      timelineEndMs: text.positionEnd * 1000,
+      sourceStartMs: 0, // Text doesn't have source timing
+      sourceEndMs: 0,
+      text: text.text,
+    });
+  });
+
+  // Sort clips by timeline start position
+  timelineClips.sort((a, b) => a.timelineStartMs - b.timelineStartMs);
+
+  return {
+    timeline: timelineClips,
+    playheadPositionMs: currentTime * 1000, // Convert seconds to ms
+    totalDurationMs: projectState.duration * 1000,
+  };
 }
 
 export { BACKEND_URL };
