@@ -27,6 +27,8 @@ import { ChatPanel, Message } from "@/app/components/editor/chat";
 import { createWebSocketConnection, buildTimelineContext } from "@/app/utils/backend";
 import { executeAction, actionSchemas } from "@/app/actions";
 import toast from "react-hot-toast";
+import CenterViewTabs from '@/app/components/editor/player/CenterViewTabs';
+import StoryboardViewer from '@/app/components/editor/chat/StoryboardViewer';
 export default function Project({ params }: { params: { id: string } }) {
     const { id } = params;
     const dispatch = useAppDispatch();
@@ -40,6 +42,10 @@ export default function Project({ params }: { params: { id: string } }) {
     const [isWsConnected, setIsWsConnected] = useState(false);
     const [isWsConnecting, setIsWsConnecting] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
+    
+    // Storyboard state
+    const [activeCenterView, setActiveCenterView] = useState<"preview" | "storyboard">("preview");
+    const [currentStoryboard, setCurrentStoryboard] = useState<{ html: string; summary: string } | null>(null);
     
     // Refs to prevent stale closure in WebSocket handlers
     const projectStateRef = useRef(projectState);
@@ -241,6 +247,24 @@ export default function Project({ params }: { params: { id: string } }) {
                         return;
                     }
                     
+                    // Handle plan responses from backend
+                    if (data.type === "plan_response") {
+                        console.log(`📋 Plan response received:`, data.summary);
+                        
+                        // Add message with htmlContent (triggers Open Plan button)
+                        const planMessage: Message = {
+                            id: Date.now().toString() + "-plan",
+                            type: "assistant",
+                            content: data.summary || "Video plan created.",
+                            htmlContent: data.html || "",  // Store HTML in existing field
+                            timestamp: new Date(),
+                        };
+                        
+                        setMessages((prev) => [...prev, planMessage]);
+                        toast.success("Plan created! Click 'Open Plan' to view.", { duration: 3000 });
+                        return;
+                    }
+                    
                     // Handle regular chat messages
                     const newMessage: Message = {
                         id: Date.now().toString(),
@@ -290,7 +314,7 @@ export default function Project({ params }: { params: { id: string } }) {
         dispatch(setActiveSection(section));
     };
 
-    const handleSendMessage = (message: string) => {
+    const handleSendMessage = (message: string, mode: "edit" | "plan") => {
         if (!message.trim() || !isWsConnected || !wsRef.current) {
             if (!isWsConnected) {
                 toast.error("Not connected to chat");
@@ -318,10 +342,12 @@ export default function Project({ params }: { params: { id: string } }) {
                 type: "user_message",
                 content: message,
                 context: timelineContext,
+                mode: mode,
             };
             
             console.log(`📤 WS SEND [user_message]:`, {
                 type: messagePayload.type,
+                mode: mode,
                 contentLength: message.length,
                 clipCount: timelineContext.timeline.length,
                 playheadMs: timelineContext.playheadPositionMs,
@@ -333,6 +359,12 @@ export default function Project({ params }: { params: { id: string } }) {
             console.error("❌ Error sending message:", error);
             toast.error("Failed to send message");
         }
+    };
+
+    const handleOpenPlan = (htmlContent: string, summary: string) => {
+        console.log(`📋 Opening storyboard view`);
+        setCurrentStoryboard({ html: htmlContent, summary });
+        setActiveCenterView("storyboard");
     };
 
     return (
@@ -385,10 +417,43 @@ export default function Project({ params }: { params: { id: string } }) {
                     )}
                 </div>
 
-                {/* Center - Video Preview */}
-                <div className="flex items-center justify-center flex-col flex-[1] overflow-hidden">
+                {/* Center - Video Preview or Storyboard (Tabbed) */}
+                <div className="flex flex-col flex-[1] overflow-hidden">
                     <ProjectName />
-                    <PreviewPlayer />
+                    
+                    {/* Tab Switcher */}
+                    <CenterViewTabs
+                        activeView={activeCenterView}
+                        onViewChange={setActiveCenterView}
+                        hasStoryboard={currentStoryboard !== null}
+                    />
+                    
+                    {/* Content Area */}
+                    <div className="flex-1 w-full overflow-hidden">
+                        {activeCenterView === "preview" ? (
+                            <PreviewPlayer />
+                        ) : (
+                            <div className="h-full">
+                                {currentStoryboard ? (
+                                    <StoryboardViewer 
+                                        htmlContent={currentStoryboard.html} 
+                                        summary={currentStoryboard.summary} 
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full bg-gray-900">
+                                        <div className="text-center text-gray-500">
+                                            <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            <p className="text-lg font-medium text-gray-400">No Storyboard Yet</p>
+                                            <p className="text-sm mt-2 text-gray-500">Use Plan Mode in chat to create a video storyboard</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Sidebar - Element Properties or Chat */}
@@ -399,6 +464,7 @@ export default function Project({ params }: { params: { id: string } }) {
                             isConnected={isWsConnected}
                             isConnecting={isWsConnecting}
                             onSendMessage={handleSendMessage}
+                            onOpenPlan={handleOpenPlan}
                         />
                     ) : (
                         <div className="overflow-y-auto p-4 h-full">

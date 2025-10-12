@@ -9,6 +9,11 @@ import {
   delete_ranges_from_timeline,
   delete_ranges_from_timeline_schema,
 } from "./deleteRangeFromTimeline";
+import {
+  _add_single_text_to_timeline,
+  add_texts_to_timeline,
+  add_texts_to_timeline_schema,
+} from "./addTextsToTimeline";
 
 // Import other actions as you create them
 
@@ -23,9 +28,11 @@ export const actionHandlers: Record<string, ActionHandler> = {
   // Internal single operations (not exposed to backend)
   _insert_single_clip_in_timeline,
   _delete_single_range_from_timeline,
+  _add_single_text_to_timeline,
   // Multi operations (exposed to backend)
   insert_clips_in_timeline,
   delete_ranges_from_timeline,
+  add_texts_to_timeline,
   // Add more actions here
 };
 
@@ -39,6 +46,7 @@ export const actionHandlers: Record<string, ActionHandler> = {
 export const actionSchemas: ActionSchema[] = [
   insert_clips_in_timeline_schema,
   delete_ranges_from_timeline_schema,
+  add_texts_to_timeline_schema,
   // Add more schemas here
 ];
 

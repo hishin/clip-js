@@ -8,3 +8,58 @@
 .moveable-line.moveable-direction  {
     display: none !important;
 }
+
+/* Storyboard Content Styling */
+.storyboard-content {
+  color: #e5e7eb;
+}
+
+.storyboard-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  margin: 1rem 0;
+}
+
+.storyboard-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.storyboard-content th,
+.storyboard-content td {
+  padding: 0.5rem;
+  border: 1px solid #374151;
+}
+
+.storyboard-content th {
+  background-color: #1f2937;
+  font-weight: 600;
+}
+
+.storyboard-content [data-scene-id] {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-left: 4px solid #8b5cf6;
+  background-color: #1f2937;
+  border-radius: 0.375rem;
+}
+
+.storyboard-content [data-timestamp] {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.storyboard-content pre {
+  background-color: #1f2937;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.storyboard-content code {
+  color: #a78bfa;
+  font-family: 'Courier New', monospace;
+}
