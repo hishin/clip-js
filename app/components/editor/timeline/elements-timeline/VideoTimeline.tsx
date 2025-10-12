@@ -9,7 +9,7 @@ import Header from "../Header";
 import { MediaFile } from "@/app/types";
 import { debounce, throttle } from "lodash";
 
-export default function VideoTimeline() {
+export default function VideoTimeline({ track = "v1" }: { track?: "v1" | "v2" }) {
     const targetRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const { mediaFiles, activeElement, activeElementIndex, timelineZoom } = useAppSelector((state) => state.projectState);
     const dispatch = useDispatch();
@@ -89,7 +89,7 @@ export default function VideoTimeline() {
     return (
         <div >
             {mediaFiles
-                .filter((clip) => clip.type === 'video')
+                .filter((clip) => clip.type === 'video' && clip.track === track)
                 .map((clip) => (
                     <div key={clip.id}>
                         <div
@@ -100,7 +100,7 @@ export default function VideoTimeline() {
                                 }
                             }}
                             onClick={() => handleClick('media', clip.id)}
-                            className={`absolute border border-gray-500 border-opacity-50 rounded-md top-2 h-12 rounded bg-[#27272A] text-white text-sm flex items-center justify-center cursor-pointer ${activeElement === 'media' && mediaFiles[activeElementIndex].id === clip.id ? 'bg-[#3F3F46] border-blue-500' : ''}`}
+                            className={`absolute border border-gray-500 border-opacity-50 rounded-md top-1 h-10 rounded bg-[#27272A] text-white text-sm flex items-center justify-center cursor-pointer ${activeElement === 'media' && mediaFiles[activeElementIndex].id === clip.id ? 'bg-[#3F3F46] border-blue-500' : ''}`}
                             style={{
                                 left: `${clip.positionStart * timelineZoom}px`,
                                 width: `${(clip.positionEnd / clip.playbackSpeed - clip.positionStart / clip.playbackSpeed) * timelineZoom}px`,

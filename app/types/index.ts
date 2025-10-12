@@ -1,5 +1,7 @@
 export type MediaType = "video" | "audio" | "image" | "unknown";
 
+export type Track = "v1" | "v2" | "audio" | "image" | "text";
+
 export interface UploadedFile {
   id: string;
   file: File;
@@ -56,6 +58,7 @@ export interface MediaFile {
   playbackSpeed: number;
   volume: number;
   zIndex: number;
+  track?: Track; // NEW: optional track assignment (v1=A-roll, v2=B-roll)
 
   // Optional visual settings
   x?: number;
@@ -91,6 +94,7 @@ export interface TextElement {
   backgroundColor?: string; // Background behind text
   align?: "left" | "center" | "right"; // Horizontal alignment
   zIndex?: number; // Layering
+  track?: Track; // NEW: optional track assignment (defaults to "text")
 
   // Effects
   opacity?: number; // Transparency (0 to 1)

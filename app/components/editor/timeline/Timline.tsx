@@ -320,20 +320,29 @@ export const Timeline = () => {
                     {/* Timeline elements */}
                     <div className="w-full">
 
-                        <div className="relative h-16 z-10">
-                            <VideoTimeline />
+                        {/* Text Track - highest z-index */}
+                        <div className="relative h-12 z-10">
+                            <TextTimeline />
                         </div>
 
-                        <div className="relative h-16 z-10">
-                            <AudioTimeline />
-                        </div>
-
-                        <div className="relative h-16 z-10">
+                        {/* Image Track */}
+                        <div className="relative h-12 z-10">
                             <ImageTimeline />
                         </div>
 
-                        <div className="relative h-16 z-10">
-                            <TextTimeline />
+                        {/* V2 Track - B-roll */}
+                        <div className="relative h-12 z-10">
+                            <VideoTimeline track="v2" />
+                        </div>
+
+                        {/* V1 Track - A-roll */}
+                        <div className="relative h-12 z-10">
+                            <VideoTimeline track="v1" />
+                        </div>
+
+                        {/* Audio Track - lowest */}
+                        <div className="relative h-12 z-10">
+                            <AudioTimeline />
                         </div>
 
                     </div>

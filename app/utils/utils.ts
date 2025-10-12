@@ -1,4 +1,5 @@
-import { MediaType } from "../types";
+import { MediaType, Track } from "../types";
+
 export const categorizeFile = (mimeType: string): MediaType => {
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
@@ -64,4 +65,35 @@ export function generateNextClipId(
   const maxNumber =
     existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
   return `${typePrefix}${maxNumber + 1}`;
+}
+
+/**
+ * Default z-index values for each track.
+ * Higher values render on top of lower values.
+ *
+ * Usage: DEFAULT_TRACK_Z_INDEX[track] or DEFAULT_TRACK_Z_INDEX.v1
+ */
+export const DEFAULT_TRACK_Z_INDEX: Record<Track, number> = {
+  text: 1000,
+  image: 100,
+  v2: 50,
+  v1: 10,
+  audio: 0,
+};
+
+/**
+ * Determine the default track for a given media type.
+ * Videos default to v1 (A-roll), audio to audio track, images to image track.
+ */
+export function getDefaultTrackForMediaType(mediaType: MediaType): Track {
+  switch (mediaType) {
+    case "video":
+      return "v1";
+    case "audio":
+      return "audio";
+    case "image":
+      return "image";
+    default:
+      return "v1";
+  }
 }

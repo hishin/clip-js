@@ -91,7 +91,7 @@ export const VideoSequenceItem: React.FC<VideoSequenceItemProps> = ({ item, opti
                         endAt={(trim.to) * fps + REMOTION_SAFE_FRAME}
                         playbackRate={playbackRate}
                         src={item.src || ""}
-                        volume={item.volume / 100 || 100}
+                        volume={item.track === "v2" ? 0 : (item.volume ?? 0) / 100}
                         style={{
                             pointerEvents: "none",
                             top: 0,

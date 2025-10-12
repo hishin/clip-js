@@ -1,6 +1,7 @@
 import { TextElement } from "@/app/types";
 import { useAppDispatch, useAppSelector } from "@/app/store";
 import { setTextElements } from "@/app/store/slices/projectSlice";
+import { DEFAULT_TRACK_Z_INDEX } from "@/app/utils/utils";
 import { Sequence } from "remotion";
 
 const REMOTION_SAFE_FRAME = 0;
@@ -83,7 +84,7 @@ export const TextSequenceItem: React.FC<{ item: TextElement; options: SequenceIt
                 top: item.y,
                 left: item.x,
                 color: item.color || "#000000",
-                zIndex: 1000,
+                zIndex: DEFAULT_TRACK_Z_INDEX.text,
                 // backgroundColor: item.backgroundColor || "transparent",
                 opacity: item.opacity! / 100,
                 fontFamily: item.font || "Arial",

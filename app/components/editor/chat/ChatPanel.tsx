@@ -6,6 +6,7 @@ export interface Message {
   type: "user" | "assistant" | "error";
   content: string;
   timestamp: Date;
+  isStatus?: boolean;  // For agent status/reasoning messages
 }
 
 interface ChatPanelProps {
@@ -89,32 +90,42 @@ export default function ChatPanel({
             <div
               key={message.id}
               className={`flex ${
-                message.type === "user" ? "justify-end" : "justify-start"
+                message.isStatus 
+                  ? "justify-center" 
+                  : message.type === "user" 
+                  ? "justify-end" 
+                  : "justify-start"
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.type === "user"
-                    ? "bg-blue-500 text-white"
+                className={`rounded-lg px-4 py-2 ${
+                  message.isStatus
+                    ? "bg-transparent text-gray-500 dark:text-gray-400 text-xs italic max-w-full"
+                    : message.type === "user"
+                    ? "bg-blue-500 text-white max-w-[80%]"
                     : message.type === "error"
-                    ? "bg-red-500 text-white"
-                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
+                    ? "bg-red-500 text-white max-w-[80%]"
+                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 max-w-[80%]"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap break-words">
+                <p className={`whitespace-pre-wrap break-words ${
+                  message.isStatus ? "text-xs" : "text-sm"
+                }`}>
                   {message.content}
                 </p>
-                <p
-                  className={`text-xs mt-1 ${
-                    message.type === "user"
-                      ? "text-blue-100"
-                      : message.type === "error"
-                      ? "text-red-100"
-                      : "text-gray-400 dark:text-gray-500"
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+                {!message.isStatus && (
+                  <p
+                    className={`text-xs mt-1 ${
+                      message.type === "user"
+                        ? "text-blue-100"
+                        : message.type === "error"
+                        ? "text-red-100"
+                        : "text-gray-400 dark:text-gray-500"
+                    }`}
+                  >
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
             </div>
           ))

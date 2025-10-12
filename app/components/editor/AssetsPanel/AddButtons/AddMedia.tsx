@@ -3,7 +3,7 @@
 import { getFile, useAppDispatch, useAppSelector } from "../../../../store";
 import { setMediaFiles } from "../../../../store/slices/projectSlice";
 import { storeFile } from "../../../../store";
-import { categorizeFile, generateNextClipId } from "../../../../utils/utils";
+import { categorizeFile, generateNextClipId, DEFAULT_TRACK_Z_INDEX, getDefaultTrackForMediaType } from "../../../../utils/utils";
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 
@@ -27,6 +27,7 @@ export default function AddMedia({ fileId }: { fileId: string }) {
                 ? Math.max(...relevantClips.map(f => f.positionEnd))
                 : 0;
 
+            const track = getDefaultTrackForMediaType(mediaType);
             updatedMedia.push({
                 id: mediaId,
                 fileName: file.name,
@@ -47,7 +48,8 @@ export default function AddMedia({ fileId }: { fileId: string }) {
                 playbackSpeed: 1,
                 volume: 100,
                 type: mediaType,
-                zIndex: 0,
+                track: track,
+                zIndex: DEFAULT_TRACK_Z_INDEX[track],
             });
         }
         dispatch(setMediaFiles(updatedMedia));

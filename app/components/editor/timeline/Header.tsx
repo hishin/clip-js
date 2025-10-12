@@ -23,7 +23,7 @@ export const Header = () => {
     }, [currentTime]);
 
     return (
-        <div className="flex items-center py-2 w-full" ref={containerRef}>
+        <div className="flex items-center py-[0.2rem] w-full" ref={containerRef}>
             <div className="relative h-8">
                 {tickMarkers.map((marker) => {
                     const isWholeSecond = Number.isInteger(marker) && marker !== 0;

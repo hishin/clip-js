@@ -215,6 +215,32 @@ export default function Project({ params }: { params: { id: string } }) {
                         return;
                     }
                     
+                    // Handle agent status messages (thinking, executing tools)
+                    if (data.type === "agent_status") {
+                        const statusMessage: Message = {
+                            id: Date.now().toString() + "-status",
+                            type: "assistant",
+                            content: data.message || data.content,
+                            timestamp: new Date(),
+                            isStatus: true  // Mark as status for special styling
+                        };
+                        setMessages((prev) => [...prev, statusMessage]);
+                        return;
+                    }
+                    
+                    // Handle agent reasoning (the LLM's plan/thinking) as a regular assistant message
+                    if (data.type === "agent_reasoning") {
+                        const reasoningMessage: Message = {
+                            id: Date.now().toString(),
+                            type: "assistant",
+                            content: data.content,
+                            timestamp: new Date(),
+                            // No isStatus - display as normal assistant message
+                        };
+                        setMessages((prev) => [...prev, reasoningMessage]);
+                        return;
+                    }
+                    
                     // Handle regular chat messages
                     const newMessage: Message = {
                         id: Date.now().toString(),
@@ -396,50 +422,69 @@ export default function Project({ params }: { params: { id: string } }) {
             <div className="flex flex-row border-t border-gray-500">
                 <div className=" bg-darkSurfacePrimary flex flex-col items-center justify-center mt-20">
 
-                    <div className="relative h-16">
-                        <div className="flex items-center gap-2 p-4">
+                    {/* Text Track */}
+                    <div className="relative h-12">
+                        <div className="flex items-center gap-2 p-2">
                             <Image
-                                alt="Video"
-                                className="invert h-auto w-auto max-w-[30px] max-h-[30px]"
-                                height={30}
-                                width={30}
-                                src="https://www.svgrepo.com/show/532727/video.svg"
+                                alt="Text"
+                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                height={24}
+                                width={24}
+                                src="https://www.svgrepo.com/show/535686/text.svg"
                             />
                         </div>
                     </div>
 
-                    <div className="relative h-16">
-                        <div className="flex items-center gap-2 p-4">
+                    {/* Image Track */}
+                    <div className="relative h-12">
+                        <div className="flex items-center gap-2 p-2">
                             <Image
-                                alt="Video"
-                                className="invert h-auto w-auto max-w-[30px] max-h-[30px]"
-                                height={30}
-                                width={30}
-                                src="https://www.svgrepo.com/show/532708/music.svg"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="relative h-16">
-                        <div className="flex items-center gap-2 p-4">
-                            <Image
-                                alt="Video"
-                                className="invert h-auto w-auto max-w-[30px] max-h-[30px]"
-                                height={30}
-                                width={30}
+                                alt="Image"
+                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                height={24}
+                                width={24}
                                 src="https://www.svgrepo.com/show/535454/image.svg"
                             />
                         </div>
                     </div>
 
-                    <div className="relative h-16">
-                        <div className="flex items-center gap-2 p-4">
+                    {/* V2 Track - B-roll */}
+                    <div className="relative h-12">
+                        <div className="flex flex-col items-center justify-center p-1">
                             <Image
-                                alt="Video"
-                                className="invert h-auto w-auto max-w-[30px] max-h-[30px]"
-                                height={30}
-                                width={30}
-                                src="https://www.svgrepo.com/show/535686/text.svg"
+                                alt="Video V2"
+                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                height={24}
+                                width={24}
+                                src="https://www.svgrepo.com/show/532727/video.svg"
+                            />
+                            <span className="text-[8px] text-gray-400 mt-[-2px]">V2</span>
+                        </div>
+                    </div>
+
+                    {/* V1 Track - A-roll */}
+                    <div className="relative h-12">
+                        <div className="flex flex-col items-center justify-center p-1">
+                            <Image
+                                alt="Video V1"
+                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                height={24}
+                                width={24}
+                                src="https://www.svgrepo.com/show/532727/video.svg"
+                            />
+                            <span className="text-[8px] text-gray-400 mt-[-2px]">V1</span>
+                        </div>
+                    </div>
+
+                    {/* Audio Track */}
+                    <div className="relative h-12">
+                        <div className="flex items-center gap-2 p-2">
+                            <Image
+                                alt="Audio"
+                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                height={24}
+                                width={24}
+                                src="https://www.svgrepo.com/show/532708/music.svg"
                             />
                         </div>
                     </div>
@@ -449,3 +494,4 @@ export default function Project({ params }: { params: { id: string } }) {
         </div >
     );
 }
+

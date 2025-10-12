@@ -1,7 +1,12 @@
 import { getFile } from "@/app/store";
 import { setMediaFiles } from "@/app/store/slices/projectSlice";
-import { MediaFile } from "@/app/types";
-import { categorizeFile, generateNextClipId } from "@/app/utils/utils";
+import { MediaFile, Track } from "@/app/types";
+import {
+  categorizeFile,
+  generateNextClipId,
+  DEFAULT_TRACK_Z_INDEX,
+  getDefaultTrackForMediaType,
+} from "@/app/utils/utils";
 import { ActionHandler, ActionSchema } from "./types";
 
 /**
@@ -66,6 +71,8 @@ export const _insert_single_clip_in_timeline: ActionHandler = async (
       [...projectState.mediaFiles, ...projectState.textElements],
       mediaType
     );
+    const track: Track =
+      parameters.track || getDefaultTrackForMediaType(mediaType);
     const newMediaFile: MediaFile = {
       id: mediaId,
       fileName: file.name,
@@ -84,9 +91,10 @@ export const _insert_single_clip_in_timeline: ActionHandler = async (
       opacity: 100,
       crop: { x: 0, y: 0, width: 1920, height: 1080 },
       playbackSpeed: 1,
-      volume: 100,
+      volume: track === "v2" && mediaType === "video" ? 0 : 100,
       type: mediaType,
-      zIndex: 0,
+      track: track,
+      zIndex: DEFAULT_TRACK_Z_INDEX[track],
     };
 
     console.log(
@@ -163,6 +171,11 @@ export const insert_clips_in_timeline_schema: ActionSchema = {
             clipEnd: {
               type: "number",
               description: "End time within source file (seconds)",
+            },
+            track: {
+              type: "string",
+              description:
+                "Which track to place the clip on: 'v1' (A-roll), 'v2' (B-roll), 'audio', or 'image'. Defaults to v1 for video, audio for audio, image for image.",
             },
           },
         },
@@ -254,6 +267,7 @@ export const insert_clips_in_timeline: ActionHandler = async (
       timelineEnd: currentTimelinePosition + clipDuration,
       clipStart: clipParams.clipStart,
       clipEnd: clipParams.clipEnd,
+      track: clipParams.track, // Pass through track if specified
     };
 
     const result = await _insert_single_clip_in_timeline(
