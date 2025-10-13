@@ -8,7 +8,7 @@ import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 export default function AddMedia({ fileId }: { fileId: string }) {
-    const { mediaFiles, textElements } = useAppSelector((state) => state.projectState);
+    const { mediaFiles, textElements, sourceFiles } = useAppSelector((state) => state.projectState);
     const dispatch = useAppDispatch();
 
     const handleFileChange = async () => {
@@ -27,16 +27,20 @@ export default function AddMedia({ fileId }: { fileId: string }) {
                 ? Math.max(...relevantClips.map(f => f.positionEnd))
                 : 0;
 
+            // Get duration from sourceFiles metadata, fallback to 30 seconds
+            const sourceFile = sourceFiles.find(sf => sf.fileId === fileId);
+            const duration = sourceFile?.metadata?.durationSeconds ?? 30;
+
             const track = getDefaultTrackForMediaType(mediaType);
             updatedMedia.push({
                 id: mediaId,
                 fileName: file.name,
                 fileId: fileId,
                 startTime: 0,
-                endTime: 30,
+                endTime: duration,
                 src: URL.createObjectURL(file),
                 positionStart: lastEnd,
-                positionEnd: lastEnd + 30,
+                positionEnd: lastEnd + duration,
                 includeInMerge: true,
                 x: 0,
                 y: 0,

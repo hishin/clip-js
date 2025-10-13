@@ -8,7 +8,7 @@ import {
   setSourceFiles,
 } from "../../../../store/slices/projectSlice";
 import { storeFile } from "../../../../store";
-import { categorizeFile, generateFileAlias } from "../../../../utils/utils";
+import { categorizeFile, generateFileAlias, extractMediaDuration } from "../../../../utils/utils";
 import Image from "next/image";
 import { FileInfo } from "@/app/types";
 
@@ -30,12 +30,17 @@ export default function AddMedia() {
     
       await storeFile(file, fileId);
 
+      // Extract duration
+      const duration = await extractMediaDuration(file);
+
       const newFileInfo: FileInfo = {
         fileId: fileId,
         fileName: file.name,
         alias: generateFileAlias(existingAliases, file.name),
         type: categorizeFile(file.type),
+        metadata: duration !== null ? { durationSeconds: duration } : {}
       };
+      
       newSourceFiles.push(newFileInfo);
       existingAliases.push(newFileInfo.alias);
     }

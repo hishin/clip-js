@@ -97,3 +97,47 @@ export function getDefaultTrackForMediaType(mediaType: MediaType): Track {
       return "v1";
   }
 }
+
+/**
+ * Extract duration from a media file (video/audio) using HTML5 Media API.
+ * Returns duration in seconds, or null if unable to extract.
+ */
+export async function extractMediaDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const mediaType = categorizeFile(file.type);
+
+    if (mediaType === "video") {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(isFinite(video.duration) ? video.duration : null);
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(null);
+      };
+
+      video.src = URL.createObjectURL(file);
+    } else if (mediaType === "audio") {
+      const audio = document.createElement("audio");
+      audio.preload = "metadata";
+
+      audio.onloadedmetadata = () => {
+        URL.revokeObjectURL(audio.src);
+        resolve(isFinite(audio.duration) ? audio.duration : null);
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audio.src);
+        resolve(null);
+      };
+
+      audio.src = URL.createObjectURL(file);
+    } else {
+      resolve(null);
+    }
+  });
+}

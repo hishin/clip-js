@@ -166,16 +166,18 @@ export const insert_clips_in_timeline_schema: ActionSchema = {
             },
             clipStart: {
               type: "number",
-              description: "Start time within source file (seconds)",
+              description:
+                "Start time within source file (seconds). Optional - if not provided, starts from 0.",
             },
             clipEnd: {
               type: "number",
-              description: "End time within source file (seconds)",
+              description:
+                "End time within source file (seconds). Optional - if not provided, uses the full duration of the media file.",
             },
             track: {
               type: "string",
               description:
-                "Which track to place the clip on: 'v1' (A-roll), 'v2' (B-roll), 'audio', or 'image'. Defaults to v1 for video, audio for audio, image for image.",
+                "Which track to place the clip on: 'v1' (A-roll), 'v2' (B-roll), 'audio', or 'image'. Optional - if not provided or if there's a type mismatch, will auto-detect based on file type (videos->v1, audio->audio, images->image).",
             },
           },
         },
@@ -258,16 +260,102 @@ export const insert_clips_in_timeline: ActionHandler = async (
 
   for (let i = 0; i < parameters.clips.length; i++) {
     const clipParams = parameters.clips[i];
-    const clipDuration = clipParams.clipEnd - clipParams.clipStart;
+
+    // Get source file to validate and determine properties
+    const sourceFile = currentContext.projectState.sourceFiles.find(
+      (sf) => sf.alias === clipParams.fileAlias
+    );
+
+    if (!sourceFile) {
+      results.push({
+        clipIndex: i,
+        success: false,
+        error: `No source file found with alias: ${clipParams.fileAlias}`,
+        timelineStart: currentTimelinePosition,
+        timelineEnd: currentTimelinePosition,
+      });
+      overallSuccess = false;
+      console.error(
+        `📎 Clip ${i}: No source file found with alias "${clipParams.fileAlias}"`
+      );
+      continue;
+    }
+
+    // Handle missing clipStart/clipEnd
+    let clipStart = clipParams.clipStart;
+    let clipEnd = clipParams.clipEnd;
+
+    if (clipStart === undefined || clipEnd === undefined) {
+      // Check if we have stored duration in metadata
+      const storedDuration = sourceFile.metadata?.durationSeconds;
+
+      clipStart = clipStart ?? 0;
+      clipEnd = clipEnd ?? storedDuration ?? 30; // Use stored duration, fallback to 30s
+
+      console.log(
+        `📎 Clip ${i}: No clipStart/clipEnd provided, using ${
+          storedDuration ? "stored" : "default"
+        } duration: ${clipStart}-${clipEnd}s`
+      );
+    }
+
+    const clipDuration = clipEnd - clipStart;
+
+    // Validate duration
+    if (clipDuration <= 0 || !isFinite(clipDuration)) {
+      results.push({
+        clipIndex: i,
+        success: false,
+        error: `Invalid clip duration: ${clipDuration}s (clipStart: ${clipStart}, clipEnd: ${clipEnd})`,
+        timelineStart: currentTimelinePosition,
+        timelineEnd: currentTimelinePosition,
+      });
+      overallSuccess = false;
+      console.error(`📎 Clip ${i}: Invalid clip duration`);
+      continue;
+    }
+
+    // Validate and correct track assignment based on actual file type
+    let track = clipParams.track;
+    try {
+      const file = await getFile(sourceFile.fileId);
+      const actualMediaType = categorizeFile(file.type);
+      const defaultTrack = getDefaultTrackForMediaType(actualMediaType);
+
+      // If track is specified, validate it matches the file type
+      if (track) {
+        // Check for common mismatches
+        const isMismatch =
+          (track === "audio" && actualMediaType === "video") ||
+          (track === "v1" && actualMediaType === "audio") ||
+          (track === "v2" && actualMediaType === "audio") ||
+          (track === "image" && actualMediaType !== "image");
+
+        if (isMismatch) {
+          console.warn(
+            `📎 Clip ${i}: Track mismatch! File "${sourceFile.alias}" is type "${actualMediaType}" but was sent to "${track}" track. Overriding to "${defaultTrack}"`
+          );
+          track = defaultTrack;
+        }
+      } else {
+        // No track specified, use default
+        track = defaultTrack;
+      }
+    } catch (error) {
+      console.warn(
+        `📎 Clip ${i}: Could not validate track for file "${sourceFile.alias}": ${error}`
+      );
+      // If we can't load the file, proceed with whatever track was specified (or undefined)
+    }
 
     // Build params for single clip insert
     const adjustedParams = {
       fileAlias: clipParams.fileAlias,
       timelineStart: currentTimelinePosition,
       timelineEnd: currentTimelinePosition + clipDuration,
-      clipStart: clipParams.clipStart,
-      clipEnd: clipParams.clipEnd,
-      track: clipParams.track, // Pass through track if specified
+      clipStart: clipStart,
+      clipEnd: clipEnd,
+      track: track, // Pass through validated track
     };
 
     const result = await _insert_single_clip_in_timeline(

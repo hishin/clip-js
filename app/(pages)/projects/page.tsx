@@ -10,7 +10,7 @@ import { listProjects, storeProject, deleteProject as deleteProjectFromDB, store
 import { ProjectState, FileInfo } from '../../types';
 import { toast } from 'react-hot-toast';
 import { connectToBackend, createProjectInBackend, deleteProjectFromBackend } from '../../utils/backend';
-import { generateFileAlias, categorizeFile } from '../../utils/utils';
+import { generateFileAlias, categorizeFile, extractMediaDuration } from '../../utils/utils';
 
 // Function to automatically upload media files from a directory
 const autoUploadMediaFiles = async (
@@ -67,6 +67,16 @@ const autoUploadMediaFiles = async (
                     console.log(`Matched file "${file.name}" (basename: "${fileBasename}") with videoMapIndex ${videoMapIndex} and walnut_id ${data.walnut_id}`);
                 } else {
                     console.log(`No mapping found for file "${file.name}" (basename: "${fileBasename}")`);
+                }
+                
+                // Extract duration for video/audio files
+                const duration = await extractMediaDuration(file);
+                if (duration !== null) {
+                    fileInfo.metadata = {
+                        ...fileInfo.metadata,
+                        durationSeconds: duration
+                    };
+                    console.log(`Extracted duration for "${file.name}": ${duration.toFixed(2)}s`);
                 }
                 
                 uploadedFiles.push(fileInfo);
