@@ -14,6 +14,7 @@ import {
   add_texts_to_timeline,
   add_texts_to_timeline_schema,
 } from "./addTextsToTimeline";
+import { clear_timeline, clear_timeline_schema } from "./clearTimeline";
 
 // Import other actions as you create them
 
@@ -33,6 +34,7 @@ export const actionHandlers: Record<string, ActionHandler> = {
   insert_clips_in_timeline,
   delete_ranges_from_timeline,
   add_texts_to_timeline,
+  clear_timeline,
   // Add more actions here
 };
 
@@ -47,6 +49,7 @@ export const actionSchemas: ActionSchema[] = [
   insert_clips_in_timeline_schema,
   delete_ranges_from_timeline_schema,
   add_texts_to_timeline_schema,
+  clear_timeline_schema,
   // Add more schemas here
 ];
 

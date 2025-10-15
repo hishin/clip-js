@@ -1,6 +1,6 @@
 export type MediaType = "video" | "audio" | "image" | "unknown";
 
-export type Track = "v1" | "v2" | "audio" | "image" | "text";
+export type Track = "a-roll" | "b-roll" | "audio" | "image" | "text";
 
 export interface UploadedFile {
   id: string;
@@ -30,6 +30,7 @@ export interface FileInfo {
 export interface TimelineClip {
   clipId: string;
   sourceFileAlias?: string; // e.g., "video-1"
+  track?: Track; // "a-roll" (primary narration), "b-roll" (overlay footage), "audio", "image", "text"
   timelineStartMs: number;
   timelineEndMs: number;
   sourceStartMs: number;
@@ -58,7 +59,7 @@ export interface MediaFile {
   playbackSpeed: number;
   volume: number;
   zIndex: number;
-  track?: Track; // NEW: optional track assignment (v1=A-roll, v2=B-roll)
+  track?: Track; // NEW: optional track assignment (a-roll=primary narration, b-roll=overlay footage)
 
   // Optional visual settings
   x?: number;
@@ -118,7 +119,7 @@ export interface ExportConfig {
   includeSubtitles: boolean; // TODO: add this as an option
 }
 
-export type ActiveElement = "media" | "text" | "export";
+export type ActiveElement = "media" | "text" | "export" | "notes";
 
 export interface ProjectState {
   id: string;
@@ -139,6 +140,10 @@ export interface ProjectState {
   activeSection: ActiveElement;
   activeElement: ActiveElement | null;
   activeElementIndex: number;
+  selectedClips: {
+    media: string[];
+    text: string[];
+  };
 
   resolution: { width: number; height: number };
   fps: number;

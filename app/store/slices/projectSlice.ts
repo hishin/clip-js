@@ -27,6 +27,10 @@ export const initialState: ProjectState = {
   activeSection: "media",
   activeElement: null,
   activeElementIndex: 0,
+  selectedClips: {
+    media: [],
+    text: [],
+  },
   resolution: { width: 1920, height: 1080 },
   fps: 30,
   aspectRatio: "16:9",
@@ -101,6 +105,26 @@ const projectStateSlice = createSlice({
     setActiveElementIndex: (state, action: PayloadAction<number>) => {
       state.activeElementIndex = action.payload;
     },
+    setSelectedClips: (
+      state,
+      action: PayloadAction<{ media: string[]; text: string[] }>
+    ) => {
+      state.selectedClips = action.payload;
+    },
+    addToSelection: (
+      state,
+      action: PayloadAction<{ type: "media" | "text"; id: string }>
+    ) => {
+      const { type, id } = action.payload;
+      if (type === "media" && !state.selectedClips.media.includes(id)) {
+        state.selectedClips.media.push(id);
+      } else if (type === "text" && !state.selectedClips.text.includes(id)) {
+        state.selectedClips.text.push(id);
+      }
+    },
+    clearSelection: (state) => {
+      state.selectedClips = { media: [], text: [] };
+    },
     setSourceFiles: (state, action: PayloadAction<FileInfo[]>) => {
       state.sourceFiles = action.payload;
     },
@@ -152,6 +176,9 @@ export const {
   setActiveSection,
   setActiveElement,
   setActiveElementIndex,
+  setSelectedClips,
+  addToSelection,
+  clearSelection,
   setTimelineZoom,
   rehydrate,
   createNewProject,

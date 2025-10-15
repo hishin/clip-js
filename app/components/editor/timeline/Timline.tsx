@@ -1,6 +1,6 @@
 import { useAppSelector } from "@/app/store";
-import { setMarkerTrack, setTextElements, setMediaFiles, setTimelineZoom, setCurrentTime, setIsPlaying, setActiveElement } from "@/app/store/slices/projectSlice";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { setMarkerTrack, setTextElements, setMediaFiles, setTimelineZoom, setCurrentTime, setIsPlaying, setActiveElement, setSelectedClips, clearSelection } from "@/app/store/slices/projectSlice";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
 import Header from "./Header";
@@ -13,9 +13,16 @@ import GlobalKeyHandlerProps from "../../../components/editor/keys/GlobalKeyHand
 import { generateNextClipId } from "@/app/utils/utils";
 import toast from "react-hot-toast";
 export const Timeline = () => {
-    const { currentTime, timelineZoom, enableMarkerTracking, activeElement, activeElementIndex, mediaFiles, textElements, duration, isPlaying } = useAppSelector((state) => state.projectState);
+    const { currentTime, timelineZoom, enableMarkerTracking, activeElement, activeElementIndex, mediaFiles, textElements, duration, isPlaying, selectedClips } = useAppSelector((state) => state.projectState);
     const dispatch = useDispatch();
-    const timelineRef = useRef<HTMLDivElement>(null)
+    const timelineRef = useRef<HTMLDivElement>(null);
+    const [selectionBox, setSelectionBox] = useState<{
+        startX: number;
+        startY: number;
+        currentX: number;
+        currentY: number;
+        isSelecting: boolean;
+    } | null>(null);
 
     const throttledZoom = useMemo(() =>
         throttle((value: number) => {
@@ -24,20 +31,87 @@ export const Timeline = () => {
         [dispatch]
     );
 
-    const handleSplit = () => {
-        let element = null;
-        let elements = null;
-        let setElements = null;
+    // Helper function to determine track Y positions
+    const getClipYPosition = useCallback((clip: any, type: 'media' | 'text') => {
+        if (type === 'text') {
+            return 24; // Text track center
+        }
+        if (type === 'media') {
+            if (clip.type === 'image') {
+                return 72; // Image track center
+            }
+            if (clip.type === 'video') {
+                return clip.track === 'b-roll' ? 120 : 168; // B-roll or A-roll
+            }
+            if (clip.type === 'audio') {
+                return 216; // Audio track center
+            }
+        }
+        return 0;
+    }, []);
 
-        if (!activeElement) {
+    // Update selected clips based on marquee box intersection
+    const updateSelectedClips = useCallback((startX: number, startY: number, currentX: number, currentY: number) => {
+        const minX = Math.min(startX, currentX) / timelineZoom;
+        const maxX = Math.max(startX, currentX) / timelineZoom;
+        const minY = Math.min(startY, currentY);
+        const maxY = Math.max(startY, currentY);
+
+        // Check media files for intersection
+        const selectedMedia = mediaFiles.filter(clip => {
+            const clipStart = clip.positionStart;
+            const clipEnd = clip.positionEnd;
+            const clipY = getClipYPosition(clip, 'media');
+            
+            // Check if clip intersects with selection box
+            return (
+                clipStart < maxX &&
+                clipEnd > minX &&
+                clipY >= minY - 24 && // Half track height
+                clipY <= maxY + 24
+            );
+        }).map(clip => clip.id);
+
+        // Check text elements for intersection
+        const selectedText = textElements.filter(text => {
+            const textStart = text.positionStart;
+            const textEnd = text.positionEnd;
+            const textY = getClipYPosition(text, 'text');
+            
+            return (
+                textStart < maxX &&
+                textEnd > minX &&
+                textY >= minY - 24 &&
+                textY <= maxY + 24
+            );
+        }).map(text => text.id);
+
+        dispatch(setSelectedClips({ media: selectedMedia, text: selectedText }));
+    }, [mediaFiles, textElements, timelineZoom, dispatch, getClipYPosition]);
+
+    const handleSplit = () => {
+        const { media, text } = selectedClips;
+        const totalSelected = media.length + text.length;
+        
+        // Check if anything is selected
+        if (totalSelected === 0) {
             toast.error('No element selected.');
             return;
         }
+        
+        // Split only works with single clip selection
+        if (totalSelected > 1) {
+            toast.error('Split only works with a single element. Please select one clip.');
+            return;
+        }
 
-        if (activeElement === 'media') {
-            elements = [...mediaFiles];
-            element = elements[activeElementIndex];
-            setElements = setMediaFiles;
+        // Determine which type of element is selected
+        const selectedType = media.length > 0 ? 'media' : 'text';
+        const selectedId = media.length > 0 ? media[0] : text[0];
+
+        if (selectedType === 'media') {
+            const elements = [...mediaFiles];
+            const element = elements.find(e => e.id === selectedId);
 
             if (!element) {
                 toast.error('No element selected.');
@@ -77,11 +151,16 @@ export const Timeline = () => {
                 endTime
             };
 
-            elements.splice(activeElementIndex, 1, firstPart, secondPart);
-        } else if (activeElement === 'text') {
-            elements = [...textElements];
-            element = elements[activeElementIndex];
-            setElements = setTextElements;
+            const elementIndex = elements.findIndex(e => e.id === selectedId);
+            elements.splice(elementIndex, 1, firstPart, secondPart);
+            
+            dispatch(setMediaFiles(elements));
+            dispatch(clearSelection());
+            dispatch(setActiveElement(null));
+            toast.success('Element split successfully.');
+        } else if (selectedType === 'text') {
+            const elements = [...textElements];
+            const element = elements.find(e => e.id === selectedId);
 
             if (!element) {
                 toast.error('No element selected.');
@@ -109,92 +188,190 @@ export const Timeline = () => {
                 positionEnd,
             };
 
-            elements.splice(activeElementIndex, 1, firstPart, secondPart);
-        }
-
-        if (elements && setElements) {
-            dispatch(setElements(elements as any));
+            const elementIndex = elements.findIndex(e => e.id === selectedId);
+            elements.splice(elementIndex, 1, firstPart, secondPart);
+            
+            dispatch(setTextElements(elements));
+            dispatch(clearSelection());
             dispatch(setActiveElement(null));
             toast.success('Element split successfully.');
         }
     };
 
     const handleDuplicate = () => {
-        let element = null;
-        let elements = null;
-        let setElements = null;
-
-        if (activeElement === 'media') {
-            elements = [...mediaFiles];
-            element = elements[activeElementIndex];
-            setElements = setMediaFiles;
-        } else if (activeElement === 'text') {
-            elements = [...textElements];
-            element = elements[activeElementIndex];
-            setElements = setTextElements;
-        }
-
-        if (!element) {
-            toast.error('No element selected.');
+        const { media, text } = selectedClips;
+        const totalSelected = media.length + text.length;
+        
+        if (totalSelected === 0) {
+            toast.error('No elements selected.');
             return;
         }
-
-        const elementType = activeElement === 'text' 
-            ? 'text' 
-            : ('type' in element ? element.type : 'video');
         
-        const duplicatedElement = {
-            ...element,
-            id: generateNextClipId(
-                [...mediaFiles, ...textElements],
-                elementType
-            ),
-        };
-
-        if (elements) {
-            elements.splice(activeElementIndex + 1, 0, duplicatedElement as any);
-        }
-
-        if (elements && setElements) {
-            dispatch(setElements(elements as any));
-            dispatch(setActiveElement(null));
-            toast.success('Element duplicated successfully.');
-        }
+        // Duplicate selected media clips
+        const duplicatedMedia = mediaFiles
+            .filter(clip => media.includes(clip.id))
+            .map(clip => ({
+                ...clip,
+                id: generateNextClipId([...mediaFiles, ...textElements], clip.type),
+            }));
+        
+        // Duplicate selected text elements
+        const duplicatedText = textElements
+            .filter(txt => text.includes(txt.id))
+            .map(txt => ({
+                ...txt,
+                id: generateNextClipId([...mediaFiles, ...textElements, ...duplicatedMedia], 'text'),
+            }));
+        
+        // Update state
+        dispatch(setMediaFiles([...mediaFiles, ...duplicatedMedia]));
+        dispatch(setTextElements([...textElements, ...duplicatedText]));
+        dispatch(clearSelection());
+        dispatch(setActiveElement(null));
+        
+        toast.success(`Duplicated ${totalSelected} element(s).`);
     };
 
     const handleDelete = () => {
-        // @ts-ignore
-        let element = null;
-        let elements = null;
-        let setElements = null;
-
-        if (activeElement === 'media') {
-            elements = [...mediaFiles];
-            element = elements[activeElementIndex];
-            setElements = setMediaFiles;
-        } else if (activeElement === 'text') {
-            elements = [...textElements];
-            element = elements[activeElementIndex];
-            setElements = setTextElements;
+        const { media, text } = selectedClips;
+        const totalSelected = media.length + text.length;
+        
+        // Check if anything is selected
+        if (totalSelected === 0) {
+            toast.error('No elements selected.');
+            return;
         }
+        
+        // Optional: Confirm for multiple deletions
+        if (totalSelected > 1) {
+            const confirmed = window.confirm(
+                `Are you sure you want to delete ${totalSelected} element(s)?`
+            );
+            if (!confirmed) return;
+        }
+        
+        // Filter out selected media clips
+        const newMediaFiles = mediaFiles.filter(clip => !media.includes(clip.id));
+        
+        // Filter out selected text elements
+        const newTextElements = textElements.filter(txt => !text.includes(txt.id));
+        
+        // Update state
+        dispatch(setMediaFiles(newMediaFiles));
+        dispatch(setTextElements(newTextElements));
+        dispatch(clearSelection());
+        dispatch(setActiveElement(null));
+        
+        toast.success(`Deleted ${totalSelected} element(s).`);
+    };
 
-        if (!element) {
-            toast.error('No element selected.');
+    const handleClearTimeline = () => {
+        const mediaCount = mediaFiles.length;
+        const textCount = textElements.length;
+        
+        if (mediaCount === 0 && textCount === 0) {
+            toast.error('Timeline is already empty.');
             return;
         }
 
-        if (elements) {
-            // @ts-ignore
-            elements = elements.filter(ele => ele.id !== element.id)
+        // Confirm before clearing
+        const confirmed = window.confirm(
+            `Are you sure you want to clear the entire timeline? This will remove ${mediaCount} media file(s) and ${textCount} text element(s). This action cannot be undone.`
+        );
+
+        if (!confirmed) {
+            return;
         }
 
-        if (elements && setElements) {
-            dispatch(setElements(elements as any));
-            dispatch(setActiveElement(null));
-            toast.success('Element deleted successfully.');
+        // Clear the timeline
+        dispatch(setMediaFiles([]));
+        dispatch(setTextElements([]));
+        dispatch(setActiveElement(null));
+        toast.success(`Timeline cleared: Removed ${mediaCount} media file(s) and ${textCount} text element(s).`);
+    };
+
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!timelineRef.current) return;
+
+        const target = e.target as HTMLElement;
+        const rect = timelineRef.current.getBoundingClientRect();
+        const scrollOffset = timelineRef.current.scrollLeft;
+        const startX = e.clientX - rect.left + scrollOffset;
+        const startY = e.clientY - rect.top;
+
+        // Check if clicking on empty space (not on a clip element)
+        const isClickOnClip = target.closest('.timeline-clip');
+        
+        if (!isClickOnClip) {
+            // Record potential selection start, but don't start selecting yet
+            setSelectionBox({
+                startX,
+                startY,
+                currentX: startX,
+                currentY: startY,
+                isSelecting: false, // Don't start selecting until mouse moves
+            });
+
+            // Clear existing selection if not holding modifier key
+            if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                dispatch(clearSelection());
+            }
         }
     };
 
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!selectionBox || !timelineRef.current) return;
+
+        const rect = timelineRef.current.getBoundingClientRect();
+        const scrollOffset = timelineRef.current.scrollLeft;
+        const currentX = e.clientX - rect.left + scrollOffset;
+        const currentY = e.clientY - rect.top;
+
+        // Check if mouse has moved beyond threshold (5px)
+        const deltaX = Math.abs(currentX - selectionBox.startX);
+        const deltaY = Math.abs(currentY - selectionBox.startY);
+        const threshold = 5;
+
+        if (!selectionBox.isSelecting && (deltaX > threshold || deltaY > threshold)) {
+            // Start selection if movement exceeds threshold
+            setSelectionBox({
+                ...selectionBox,
+                currentX,
+                currentY,
+                isSelecting: true,
+            });
+        } else if (selectionBox.isSelecting) {
+            // Continue updating selection
+            setSelectionBox({
+                ...selectionBox,
+                currentX,
+                currentY,
+            });
+
+            // Update selected clips
+            updateSelectedClips(selectionBox.startX, selectionBox.startY, currentX, currentY);
+        }
+    };
+
+    const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (selectionBox) {
+            if (!selectionBox.isSelecting) {
+                // No significant movement - treat as a click to move playhead
+                if (!timelineRef.current) return;
+                
+                dispatch(setIsPlaying(false));
+                const rect = timelineRef.current.getBoundingClientRect();
+                const scrollOffset = timelineRef.current.scrollLeft;
+                const clickX = e.clientX - rect.left + scrollOffset;
+                const seconds = clickX / timelineZoom;
+                const clampedTime = Math.max(0, Math.min(duration, seconds));
+                dispatch(setCurrentTime(clampedTime));
+            }
+            // Clear selection box
+            setSelectionBox(null);
+        }
+    };
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!timelineRef.current) return;
@@ -277,6 +454,20 @@ export const Timeline = () => {
                         />
                         <span className="ml-2">Delete <span className="text-xs">(Del)</span></span>
                     </button>
+                    {/* Clear Timeline */}
+                    <button
+                        onClick={handleClearTimeline}
+                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                    >
+                        <Image
+                            alt="Clear Timeline"
+                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
+                            height={30}
+                            width={30}
+                            src="https://www.svgrepo.com/show/532932/delete-left.svg"
+                        />
+                        <span className="ml-2">Clear Timeline</span>
+                    </button>
                 </div>
 
                 {/* Timeline Zoom */}
@@ -299,7 +490,10 @@ export const Timeline = () => {
             <div
                 className="relative overflow-x-auto w-full border-t border-gray-800 bg-[#1E1D21] z-10"
                 ref={timelineRef}
-                onClick={handleClick}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
             >
                 {/* Timeline Header */}
                 <Header />
@@ -317,6 +511,18 @@ export const Timeline = () => {
                             left: `${currentTime * timelineZoom}px`,
                         }}
                     />
+                    {/* Selection box overlay */}
+                    {selectionBox?.isSelecting && (
+                        <div
+                            className="absolute border-2 border-blue-400 bg-blue-200 bg-opacity-20 z-50 pointer-events-none"
+                            style={{
+                                left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                                top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                                width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                                height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+                            }}
+                        />
+                    )}
                     {/* Timeline elements */}
                     <div className="w-full">
 
@@ -332,12 +538,12 @@ export const Timeline = () => {
 
                         {/* V2 Track - B-roll */}
                         <div className="relative h-12 z-10">
-                            <VideoTimeline track="v2" />
+                            <VideoTimeline track="b-roll" />
                         </div>
 
                         {/* V1 Track - A-roll */}
                         <div className="relative h-12 z-10">
-                            <VideoTimeline track="v1" />
+                            <VideoTimeline track="a-roll" />
                         </div>
 
                         {/* Audio Track - lowest */}

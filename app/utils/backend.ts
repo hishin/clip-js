@@ -137,6 +137,7 @@ export function buildTimelineContext(
     timelineClips.push({
       clipId: media.id,
       sourceFileAlias: alias, // e.g., "video-1", "audio-1"
+      track: media.track, // Pass track info to backend
       timelineStartMs: media.positionStart * 1000, // Convert seconds to ms
       timelineEndMs: media.positionEnd * 1000,
       sourceStartMs: media.startTime * 1000,
@@ -150,6 +151,7 @@ export function buildTimelineContext(
     timelineClips.push({
       clipId: text.id,
       // sourceFileAlias omitted for text elements
+      track: "text", // Pass track info (default to "text")
       timelineStartMs: text.positionStart * 1000,
       timelineEndMs: text.positionEnd * 1000,
       sourceStartMs: 0, // Text doesn't have source timing

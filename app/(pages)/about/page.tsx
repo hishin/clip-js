@@ -16,7 +16,7 @@ export default function AboutMe() {
 
                 <div className="my-8 p-6 bg-gray-900 bg-opacity-30 backdrop-blur-lg border border-gray-800 border-opacity-30 rounded-lg">
                     <p className="text-gray-300 text-lg">
-                        {`I'm currently working on`} <span className="font-semibold text-yellow-300">ClipJS</span>, a browser-based video editor that enables you to edit videos directly from your web browser.
+                        {`I'm currently working on`} <span className="font-semibold text-yellow-300">Playhead</span>, a browser-based video editor that enables you to edit videos directly from your web browser.
                     </p>
                     <p className="text-gray-300 mt-3 text-lg">
                         {`Everything including rendering happens right in your browser! It's `}<span className="font-bold text-green-400">100% free</span> with no watermarks and supports up to 1080p export.

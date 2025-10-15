@@ -91,7 +91,7 @@ export const _insert_single_clip_in_timeline: ActionHandler = async (
       opacity: 100,
       crop: { x: 0, y: 0, width: 1920, height: 1080 },
       playbackSpeed: 1,
-      volume: track === "v2" && mediaType === "video" ? 0 : 100,
+      volume: track === "b-roll" && mediaType === "video" ? 0 : 100,
       type: mediaType,
       track: track,
       zIndex: DEFAULT_TRACK_Z_INDEX[track],
@@ -177,7 +177,7 @@ export const insert_clips_in_timeline_schema: ActionSchema = {
             track: {
               type: "string",
               description:
-                "Which track to place the clip on: 'v1' (A-roll), 'v2' (B-roll), 'audio', or 'image'. Optional - if not provided or if there's a type mismatch, will auto-detect based on file type (videos->v1, audio->audio, images->image).",
+                "Which track to place the clip on: 'a-roll' (primary narration), 'b-roll' (overlay footage), 'audio', or 'image'. Optional - if not provided or if there's a type mismatch, will auto-detect based on file type (videos->a-roll, audio->audio, images->image).",
             },
           },
         },
@@ -327,8 +327,8 @@ export const insert_clips_in_timeline: ActionHandler = async (
         // Check for common mismatches
         const isMismatch =
           (track === "audio" && actualMediaType === "video") ||
-          (track === "v1" && actualMediaType === "audio") ||
-          (track === "v2" && actualMediaType === "audio") ||
+          (track === "a-roll" && actualMediaType === "audio") ||
+          (track === "b-roll" && actualMediaType === "audio") ||
           (track === "image" && actualMediaType !== "image");
 
         if (isMismatch) {

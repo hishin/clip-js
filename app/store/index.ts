@@ -6,13 +6,15 @@ import projectStateReducer from "./slices/projectSlice";
 import projectsReducer from "./slices/projectsSlice";
 import toast from "react-hot-toast";
 
-// Create IndexedDB database for files and projects
+// Create IndexedDB database for files, projects, and storyboards
 const setupDB = async () => {
   if (typeof window === "undefined") return null;
-  const db = await openDB("clipjs-files", 1, {
+  const db = await openDB("clipjs-files", 2, {
     upgrade(db) {
+      // Create all stores - fresh setup
       db.createObjectStore("files", { keyPath: "id" });
       db.createObjectStore("projects", { keyPath: "id" });
+      db.createObjectStore("storyboards", { keyPath: "id" });
     },
   });
   return db;
@@ -187,6 +189,74 @@ export const listProjects = async () => {
   } catch (error) {
     console.error("Error listing projects:", error);
     return [];
+  }
+};
+
+// Storyboard storage functions
+export const saveStoryboard = async (storyboardId: string, data: any) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const db = await setupDB();
+    if (!db) return null;
+
+    const storyboardData = {
+      id: storyboardId,
+      data: data,
+      timestamp: Date.now(),
+    };
+
+    await db.put("storyboards", storyboardData);
+    console.log(`✅ Saved storyboard ${storyboardId} to IndexedDB`);
+    return storyboardId;
+  } catch (error) {
+    console.error("Error saving storyboard:", error);
+    return null;
+  }
+};
+
+export const getStoryboard = async (storyboardId: string) => {
+  if (typeof window === "undefined") return null;
+  try {
+    const db = await setupDB();
+    if (!db) return null;
+
+    const result = await db.get("storyboards", storyboardId);
+    if (!result) return null;
+
+    console.log(`📂 Loaded storyboard ${storyboardId} from IndexedDB`);
+    return result.data;
+  } catch (error) {
+    console.error("Error retrieving storyboard:", error);
+    return null;
+  }
+};
+
+export const listStoryboards = async () => {
+  if (typeof window === "undefined") return [];
+  try {
+    const db = await setupDB();
+    if (!db) return [];
+    const results = await db.getAll("storyboards");
+    return results.map((item) => ({
+      id: item.id,
+      timestamp: item.timestamp,
+      title: item.data?.plan?.title || "Untitled Plan",
+    }));
+  } catch (error) {
+    console.error("Error listing storyboards:", error);
+    return [];
+  }
+};
+
+export const deleteStoryboard = async (storyboardId: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    const db = await setupDB();
+    if (!db) return;
+    await db.delete("storyboards", storyboardId);
+    console.log(`🗑️ Deleted storyboard ${storyboardId} from IndexedDB`);
+  } catch (error) {
+    console.error("Error deleting storyboard:", error);
   }
 };
 

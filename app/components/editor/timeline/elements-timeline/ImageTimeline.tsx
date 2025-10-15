@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo } from "react";
 import Moveable, { OnScale, OnDrag, OnResize, OnRotate } from "react-moveable";
 import { useAppSelector } from "@/app/store";
-import { setActiveElement, setActiveElementIndex, setMediaFiles } from "@/app/store/slices/projectSlice";
+import { setActiveElement, setActiveElementIndex, setMediaFiles, setSelectedClips, addToSelection } from "@/app/store/slices/projectSlice";
 import { memo, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
@@ -11,7 +11,7 @@ import { debounce, throttle } from "lodash";
 
 export default function ImageTimeline() {
     const targetRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const { mediaFiles, textElements, activeElement, activeElementIndex, timelineZoom } = useAppSelector((state) => state.projectState);
+    const { mediaFiles, textElements, activeElement, activeElementIndex, timelineZoom, selectedClips } = useAppSelector((state) => state.projectState);
     const dispatch = useDispatch();
     const moveableRef = useRef<Record<string, Moveable | null>>({});
 
@@ -40,11 +40,16 @@ export default function ImageTimeline() {
         }, 100), [dispatch]
     );
 
-    const handleClick = (element: string, index: number | string) => {
+    const handleClick = (element: string, index: number | string, e?: React.MouseEvent) => {
         if (element === 'media') {
+            const clipId = index as unknown as string;
+            
+            // Add to selection
+            dispatch(setSelectedClips({ media: [clipId], text: [] }));
+            
+            // Keep backward compatibility
             dispatch(setActiveElement('media') as any);
-            // TODO: cause we pass id when media to find the right index i will change this later (this happens cause each timeline pass its index not index from mediaFiles array)
-            const actualIndex = mediaFiles.findIndex(clip => clip.id === index as unknown as string);
+            const actualIndex = mediaFiles.findIndex(clip => clip.id === clipId);
             dispatch(setActiveElementIndex(actualIndex));
         }
     };
@@ -53,10 +58,12 @@ export default function ImageTimeline() {
         // no negative left
         const constrainedLeft = Math.max(left, 0);
         const newPositionStart = constrainedLeft / timelineZoom;
+        const duration = clip.positionEnd - clip.positionStart; // Timeline duration
+        
         onUpdateMedia(clip.id, {
             positionStart: newPositionStart,
-            positionEnd: (newPositionStart - clip.positionStart) + clip.positionEnd,
-            endTime: (newPositionStart - clip.positionStart) + clip.endTime
+            positionEnd: newPositionStart + duration,
+            // Don't update startTime or endTime - they're source video trim points!
         })
 
         target.style.left = `${constrainedLeft}px`;
@@ -101,7 +108,11 @@ export default function ImageTimeline() {
                                 }
                             }}
                             onClick={() => handleClick('media', clip.id)}
-                            className={`absolute border border-gray-500 border-opacity-50 rounded-md top-1 h-10 rounded bg-[#27272A] text-white text-sm flex items-center justify-center cursor-pointer ${activeElement === 'media' && mediaFiles[activeElementIndex].id === clip.id ? 'bg-[#3F3F46] border-blue-500' : ''}`}
+                            className={`timeline-clip absolute rounded-md top-1 h-10 text-white text-sm flex items-center justify-center cursor-pointer ${
+                                selectedClips.media.includes(clip.id) 
+                                    ? 'bg-[#3F3F46] border-2 border-blue-500' 
+                                    : 'bg-[#27272A] border border-gray-500 border-opacity-50'
+                            }`}
                             style={{
                                 left: `${clip.positionStart * timelineZoom}px`,
                                 width: `${(clip.positionEnd - clip.positionStart) * timelineZoom}px`,
@@ -128,7 +139,7 @@ export default function ImageTimeline() {
                             }}
                             target={targetRefs.current[clip.id] || null}
                             container={null}
-                            renderDirections={activeElement === 'media' && mediaFiles[activeElementIndex].id === clip.id ? ['w', 'e'] : []}
+                            renderDirections={selectedClips.media.includes(clip.id) && selectedClips.media.length === 1 ? ['w', 'e'] : []}
                             draggable={true}
                             throttleDrag={0}
                             rotatable={false}

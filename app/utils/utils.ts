@@ -71,30 +71,30 @@ export function generateNextClipId(
  * Default z-index values for each track.
  * Higher values render on top of lower values.
  *
- * Usage: DEFAULT_TRACK_Z_INDEX[track] or DEFAULT_TRACK_Z_INDEX.v1
+ * Usage: DEFAULT_TRACK_Z_INDEX[track] or DEFAULT_TRACK_Z_INDEX["a-roll"]
  */
 export const DEFAULT_TRACK_Z_INDEX: Record<Track, number> = {
   text: 1000,
   image: 100,
-  v2: 50,
-  v1: 10,
+  "b-roll": 50,
+  "a-roll": 10,
   audio: 0,
 };
 
 /**
  * Determine the default track for a given media type.
- * Videos default to v1 (A-roll), audio to audio track, images to image track.
+ * Videos default to a-roll (primary narration), audio to audio track, images to image track.
  */
 export function getDefaultTrackForMediaType(mediaType: MediaType): Track {
   switch (mediaType) {
     case "video":
-      return "v1";
+      return "a-roll";
     case "audio":
       return "audio";
     case "image":
       return "image";
     default:
-      return "v1";
+      return "a-roll";
   }
 }
 

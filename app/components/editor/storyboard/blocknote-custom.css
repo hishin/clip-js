@@ -1,0 +1,152 @@
+/* BlockNote Dark Theme Customization */
+
+/* Main editor container */
+.bn-container {
+  background-color: #030712 !important; /* gray-950 */
+  color: #f9fafb !important; /* gray-50 */
+}
+
+/* Editor content area */
+.bn-editor {
+  background-color: #030712 !important;
+  padding: 2rem;
+}
+
+/* Block content */
+.bn-block-content {
+  color: #f9fafb !important;
+}
+
+/* Headings */
+.bn-block-content h1,
+.bn-block-content h2,
+.bn-block-content h3 {
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+/* Paragraphs */
+.bn-block-content p {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+/* Placeholder text */
+.bn-block-content[data-placeholder]::before {
+  color: #6b7280 !important; /* gray-500 */
+}
+
+/* Selection/hover states */
+.bn-block:hover {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+/* Side menu (drag handle, +) */
+.bn-side-menu {
+  color: #9ca3af !important; /* gray-400 */
+}
+
+.bn-side-menu:hover {
+  background-color: #374151 !important; /* gray-700 */
+}
+
+/* Formatting toolbar */
+.bn-formatting-toolbar {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-color: #374151 !important; /* gray-700 */
+}
+
+.bn-formatting-toolbar button {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+.bn-formatting-toolbar button:hover {
+  background-color: #374151 !important; /* gray-700 */
+}
+
+.bn-formatting-toolbar button[data-active="true"] {
+  background-color: #2563eb !important; /* blue-600 */
+  color: #ffffff !important;
+}
+
+/* Slash menu */
+.bn-slash-menu {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-color: #374151 !important; /* gray-700 */
+}
+
+.bn-slash-menu-item {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+.bn-slash-menu-item:hover,
+.bn-slash-menu-item[data-selected="true"] {
+  background-color: #374151 !important; /* gray-700 */
+}
+
+/* Video segment blocks */
+.video-segment-block {
+  margin: 1rem 0;
+}
+
+.video-segment-block video {
+  border-radius: 0.5rem;
+  background-color: #111827; /* gray-900 */
+}
+
+/* Scrollbar */
+.bn-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.bn-editor::-webkit-scrollbar-track {
+  background: #1f2937; /* gray-800 */
+}
+
+.bn-editor::-webkit-scrollbar-thumb {
+  background: #4b5563; /* gray-600 */
+  border-radius: 4px;
+}
+
+.bn-editor::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* gray-500 */
+}
+
+/* Link styling */
+.bn-inline-content a {
+  color: #60a5fa !important; /* blue-400 */
+  text-decoration: underline;
+}
+
+.bn-inline-content a:hover {
+  color: #93c5fd !important; /* blue-300 */
+}
+
+/* Column layout styling */
+.bn-block-outer[data-node-type="columnList"] {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.bn-block-outer[data-node-type="column"] {
+  flex: 1;
+  min-width: 0; /* Prevent overflow */
+  padding: 0.5rem;
+  border: 1px solid #374151; /* gray-700 */
+  border-radius: 0.5rem;
+  background-color: #1f2937; /* gray-800 */
+}
+
+.bn-block-outer[data-node-type="column"]:hover {
+  border-color: #4b5563; /* gray-600 */
+  background-color: #111827; /* gray-900 */
+}
+
+/* Column resize handle */
+.bn-column-resize-handle {
+  background-color: #4b5563 !important; /* gray-600 */
+}
+
+.bn-column-resize-handle:hover {
+  background-color: #6b7280 !important; /* gray-500 */
+}
+
