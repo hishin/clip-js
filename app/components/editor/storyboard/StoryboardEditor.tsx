@@ -1,16 +1,21 @@
 'use client';
 
-import { BlockNoteSchema, defaultBlockSpecs } from "@blocknote/core";
-import { useCreateBlockNote } from "@blocknote/react";
+import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, insertOrUpdateBlock } from "@blocknote/core";
+import { 
+  useCreateBlockNote, 
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
+  DefaultReactSuggestionItem 
+} from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import "./blocknote-custom.css";
 import { createVideoSegment } from './blocks/VideoSegmentBlock';
+import { createContentSearch } from './blocks/ContentSearchBlock';
 import { 
   withMultiColumn,
   multiColumnDropCursor,
-  getMultiColumnSlashMenuItems 
 } from "@blocknote/xl-multi-column";
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -24,16 +29,39 @@ interface StoryboardEditorProps {
   onSave?: (blocks: any[]) => Promise<void>;
 }
 
-// Create custom schema with VideoSegment, then add multi-column support
+// Create custom schema with VideoSegment and ContentSearch, then add multi-column support
 const schema = withMultiColumn(
   BlockNoteSchema.create({
     blockSpecs: {
       ...defaultBlockSpecs,
       // Custom video segment block
       videoSegment: createVideoSegment(),
+      // Custom content search block
+      contentSearch: createContentSearch(),
     },
   })
 );
+
+// Custom Slash Menu item to insert content search block
+const insertContentSearchItem = (editor: typeof schema.BlockNoteEditor) => ({
+  title: "Content Search",
+  onItemClick: () => {
+    insertOrUpdateBlock(editor, {
+      type: "contentSearch",
+    });
+  },
+  aliases: ["content", "search", "find", "visual"],
+  group: "Media",
+  subtext: "Search for visual content in your media files",
+});
+
+// List containing all default Slash Menu Items, plus our custom content search
+const getCustomSlashMenuItems = (
+  editor: typeof schema.BlockNoteEditor
+): DefaultReactSuggestionItem[] => [
+  ...getDefaultReactSlashMenuItems(editor),
+  insertContentSearchItem(editor),
+];
 
 export default function StoryboardEditor({ 
   initialData, 
@@ -130,7 +158,15 @@ export default function StoryboardEditor({
           editor={editor} 
           theme="dark"
           className="blocknote-editor-dark"
-        />
+          slashMenu={false}
+        >
+          <SuggestionMenuController
+            triggerCharacter={"/"}
+            getItems={async (query) =>
+              filterSuggestionItems(getCustomSlashMenuItems(editor), query)
+            }
+          />
+        </BlockNoteView>
       </div>
     </div>
   );

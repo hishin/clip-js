@@ -163,10 +163,22 @@ export function buildTimelineContext(
   // Sort clips by timeline start position
   timelineClips.sort((a, b) => a.timelineStartMs - b.timelineStartMs);
 
+  // Get selected range from state (already calculated in Timeline component)
+  const selectedRangeStartMs =
+    projectState.selectedRangeStart !== undefined
+      ? projectState.selectedRangeStart * 1000
+      : undefined;
+  const selectedRangeEndMs =
+    projectState.selectedRangeEnd !== undefined
+      ? projectState.selectedRangeEnd * 1000
+      : undefined;
+
   return {
     timeline: timelineClips,
     playheadPositionMs: currentTime * 1000, // Convert seconds to ms
     totalDurationMs: projectState.duration * 1000,
+    selectedRangeStartMs,
+    selectedRangeEndMs,
   };
 }
 

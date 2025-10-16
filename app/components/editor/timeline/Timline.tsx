@@ -1,5 +1,5 @@
 import { useAppSelector } from "@/app/store";
-import { setMarkerTrack, setTextElements, setMediaFiles, setTimelineZoom, setCurrentTime, setIsPlaying, setActiveElement, setSelectedClips, clearSelection } from "@/app/store/slices/projectSlice";
+import { setMarkerTrack, setTextElements, setMediaFiles, setTimelineZoom, setCurrentTime, setIsPlaying, setActiveElement, setSelectedClips, setSelectedRange, clearSelection } from "@/app/store/slices/projectSlice";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
@@ -58,7 +58,7 @@ export const Timeline = () => {
         const maxY = Math.max(startY, currentY);
 
         // Check media files for intersection
-        const selectedMedia = mediaFiles.filter(clip => {
+        const selectedMediaClips = mediaFiles.filter(clip => {
             const clipStart = clip.positionStart;
             const clipEnd = clip.positionEnd;
             const clipY = getClipYPosition(clip, 'media');
@@ -70,10 +70,10 @@ export const Timeline = () => {
                 clipY >= minY - 24 && // Half track height
                 clipY <= maxY + 24
             );
-        }).map(clip => clip.id);
+        });
 
         // Check text elements for intersection
-        const selectedText = textElements.filter(text => {
+        const selectedTextClips = textElements.filter(text => {
             const textStart = text.positionStart;
             const textEnd = text.positionEnd;
             const textY = getClipYPosition(text, 'text');
@@ -84,9 +84,22 @@ export const Timeline = () => {
                 textY >= minY - 24 &&
                 textY <= maxY + 24
             );
-        }).map(text => text.id);
+        });
+
+        const selectedMedia = selectedMediaClips.map(clip => clip.id);
+        const selectedText = selectedTextClips.map(text => text.id);
 
         dispatch(setSelectedClips({ media: selectedMedia, text: selectedText }));
+
+        // Calculate and dispatch selected range
+        const allSelectedClips = [...selectedMediaClips, ...selectedTextClips];
+        if (allSelectedClips.length > 0) {
+            const startTime = Math.min(...allSelectedClips.map(clip => clip.positionStart));
+            const endTime = Math.max(...allSelectedClips.map(clip => clip.positionEnd));
+            dispatch(setSelectedRange({ start: startTime, end: endTime }));
+        } else {
+            dispatch(setSelectedRange({ start: undefined, end: undefined }));
+        }
     }, [mediaFiles, textElements, timelineZoom, dispatch, getClipYPosition]);
 
     const handleSplit = () => {

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import type { StoryboardData } from "@/app/types/storyboard";
-import { getStoryboard } from "@/app/store";
+import { getStoryboard, useAppSelector } from "@/app/store";
 
 type ChatMode = "edit" | "plan";
 
@@ -43,6 +43,11 @@ export default function ChatPanel({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const llmDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Access Redux state for timecode display
+  const { currentTime, selectedRangeStart, selectedRangeEnd } = useAppSelector(
+    (state) => state.projectState
+  );
+
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -83,6 +88,22 @@ export default function ChatPanel({
       };
     }
   }, [isLLMDropdownOpen]);
+
+  // Format seconds to timecode (MM:SS)
+  const formatTimecode = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Get timecode display based on selection or playhead
+  const getTimecodeDisplay = (): string => {
+    if (selectedRangeStart !== undefined && selectedRangeEnd !== undefined) {
+      return `${formatTimecode(selectedRangeStart)} - ${formatTimecode(selectedRangeEnd)}`;
+    }
+    // No selection, show current playhead
+    return formatTimecode(currentTime);
+  };
 
   const sendMessage = () => {
     if (!inputValue.trim()) {
@@ -241,6 +262,25 @@ export default function ChatPanel({
 
       {/* Input Area with Mode Selector and Send Button */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        {/* Timecode Display */}
+        <div className="mb-2 flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md w-fit">
+          <svg
+            width="14"
+            height="15"
+            viewBox="0 0 14 15"
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-gray-500 dark:text-gray-400"
+          >
+            <path
+              d="M5 1.29V1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v.29a7 7 0 1 1-4 0zM7 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zm.833-5.963v.387L9.289 9.38a.75.75 0 1 1-1.06 1.06L6.332 8.546V5.344a.75.75 0 0 1 1.5 0v2.193z"
+              fill="currentColor"
+            />
+          </svg>
+          <span className="text-xs font-mono text-gray-600 dark:text-gray-300">
+            {getTimecodeDisplay()}
+          </span>
+        </div>
+
         {/* Text Input */}
         <textarea
           value={inputValue}

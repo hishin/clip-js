@@ -122,8 +122,17 @@ const projectStateSlice = createSlice({
         state.selectedClips.text.push(id);
       }
     },
+    setSelectedRange: (
+      state,
+      action: PayloadAction<{ start?: number; end?: number }>
+    ) => {
+      state.selectedRangeStart = action.payload.start;
+      state.selectedRangeEnd = action.payload.end;
+    },
     clearSelection: (state) => {
       state.selectedClips = { media: [], text: [] };
+      state.selectedRangeStart = undefined;
+      state.selectedRangeEnd = undefined;
     },
     setSourceFiles: (state, action: PayloadAction<FileInfo[]>) => {
       state.sourceFiles = action.payload;
@@ -178,6 +187,7 @@ export const {
   setActiveElementIndex,
   setSelectedClips,
   addToSelection,
+  setSelectedRange,
   clearSelection,
   setTimelineZoom,
   rehydrate,

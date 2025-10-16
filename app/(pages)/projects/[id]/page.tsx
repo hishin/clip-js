@@ -20,6 +20,7 @@ import ShortcutsButton from "@/app/components/editor/AssetsPanel/SidebarButtons/
 import MediaProperties from "../../../components/editor/PropertiesSection/MediaProperties";
 import TextProperties from "../../../components/editor/PropertiesSection/TextProperties";
 import { Timeline } from "../../../components/editor/timeline/Timline";
+import TimelineAssistant from "../../../components/editor/timeline/TimelineAssistant";
 import { PreviewPlayer } from "../../../components/editor/player/remotion/Player";
 import { MediaFile } from "@/app/types";
 import ExportList from "../../../components/editor/AssetsPanel/tools-section/ExportList";
@@ -398,7 +399,7 @@ export default function Project({ params }: { params: { id: string } }) {
         dispatch(setActiveSection(section));
     };
 
-    const handleSendMessage = (message: string, mode: "edit" | "plan") => {
+    const handleSendMessage = (message: string, mode: "edit" | "plan" | "assistant") => {
         if (!message.trim() || !isWsConnected || !wsRef.current) {
             if (!isWsConnected) {
                 toast.error("Not connected to chat");
@@ -435,7 +436,10 @@ export default function Project({ params }: { params: { id: string } }) {
                 contentLength: message.length,
                 clipCount: timelineContext.timeline.length,
                 playheadMs: timelineContext.playheadPositionMs,
-                totalDurationMs: timelineContext.totalDurationMs
+                totalDurationMs: timelineContext.totalDurationMs,
+                selectedRange: timelineContext.selectedRangeStartMs && timelineContext.selectedRangeEndMs 
+                    ? `${timelineContext.selectedRangeStartMs}ms - ${timelineContext.selectedRangeEndMs}ms`
+                    : 'none'
             });
             
             wsRef.current.send(JSON.stringify(messagePayload));
@@ -722,78 +726,87 @@ export default function Project({ params }: { params: { id: string } }) {
                     )}
                 </div>
             </div>
-            {/* Timeline at bottom */}
-            <div className="flex flex-row border-t border-gray-500">
-                <div className=" bg-darkSurfacePrimary flex flex-col items-center justify-center mt-20">
+            {/* Timeline and Assistant at bottom */}
+            <div className="flex flex-col border-t border-gray-500">
+                <div className="flex flex-row">
+                    <div className=" bg-darkSurfacePrimary flex flex-col items-center justify-center mt-20">
 
-                    {/* Text Track */}
-                    <div className="relative h-12">
-                        <div className="flex items-center gap-2 p-2">
-                            <Image
-                                alt="Text"
-                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
-                                height={24}
-                                width={24}
-                                src="https://www.svgrepo.com/show/535686/text.svg"
-                            />
+                        {/* Text Track */}
+                        <div className="relative h-12">
+                            <div className="flex items-center gap-2 p-2">
+                                <Image
+                                    alt="Text"
+                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    height={24}
+                                    width={24}
+                                    src="https://www.svgrepo.com/show/535686/text.svg"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Image Track */}
+                        <div className="relative h-12">
+                            <div className="flex items-center gap-2 p-2">
+                                <Image
+                                    alt="Image"
+                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    height={24}
+                                    width={24}
+                                    src="https://www.svgrepo.com/show/535454/image.svg"
+                                />
+                            </div>
+                        </div>
+
+                        {/* V2 Track - B-roll */}
+                        <div className="relative h-12">
+                            <div className="flex flex-col items-center justify-center p-1">
+                                <Image
+                                    alt="Video V2"
+                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    height={24}
+                                    width={24}
+                                    src="https://www.svgrepo.com/show/532727/video.svg"
+                                />
+                                <span className="text-[8px] text-gray-400 mt-[-2px]">V2</span>
+                            </div>
+                        </div>
+
+                        {/* V1 Track - A-roll */}
+                        <div className="relative h-12">
+                            <div className="flex flex-col items-center justify-center p-1">
+                                <Image
+                                    alt="Video V1"
+                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    height={24}
+                                    width={24}
+                                    src="https://www.svgrepo.com/show/532727/video.svg"
+                                />
+                                <span className="text-[8px] text-gray-400 mt-[-2px]">V1</span>
+                            </div>
+                        </div>
+
+                        {/* Audio Track */}
+                        <div className="relative h-12">
+                            <div className="flex items-center gap-2 p-2">
+                                <Image
+                                    alt="Audio"
+                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    height={24}
+                                    width={24}
+                                    src="https://www.svgrepo.com/show/532708/music.svg"
+                                />
+                            </div>
                         </div>
                     </div>
-
-                    {/* Image Track */}
-                    <div className="relative h-12">
-                        <div className="flex items-center gap-2 p-2">
-                            <Image
-                                alt="Image"
-                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
-                                height={24}
-                                width={24}
-                                src="https://www.svgrepo.com/show/535454/image.svg"
-                            />
-                        </div>
-                    </div>
-
-                    {/* V2 Track - B-roll */}
-                    <div className="relative h-12">
-                        <div className="flex flex-col items-center justify-center p-1">
-                            <Image
-                                alt="Video V2"
-                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
-                                height={24}
-                                width={24}
-                                src="https://www.svgrepo.com/show/532727/video.svg"
-                            />
-                            <span className="text-[8px] text-gray-400 mt-[-2px]">V2</span>
-                        </div>
-                    </div>
-
-                    {/* V1 Track - A-roll */}
-                    <div className="relative h-12">
-                        <div className="flex flex-col items-center justify-center p-1">
-                            <Image
-                                alt="Video V1"
-                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
-                                height={24}
-                                width={24}
-                                src="https://www.svgrepo.com/show/532727/video.svg"
-                            />
-                            <span className="text-[8px] text-gray-400 mt-[-2px]">V1</span>
-                        </div>
-                    </div>
-
-                    {/* Audio Track */}
-                    <div className="relative h-12">
-                        <div className="flex items-center gap-2 p-2">
-                            <Image
-                                alt="Audio"
-                                className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
-                                height={24}
-                                width={24}
-                                src="https://www.svgrepo.com/show/532708/music.svg"
-                            />
-                        </div>
-                    </div>
+                    <Timeline />
                 </div>
-                <Timeline />
+                {/* Timeline Assistant */}
+                <TimelineAssistant
+                    isConnected={isWsConnected}
+                    onSendMessage={handleSendMessage}
+                    onSwitchLLM={handleSwitchLLM}
+                    currentLLM={currentLLM}
+                />
             </div>
         </div >
     );

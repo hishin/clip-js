@@ -43,6 +43,8 @@ export interface TimelineContext {
   timeline: TimelineClip[];
   playheadPositionMs: number;
   totalDurationMs: number;
+  selectedRangeStartMs?: number;
+  selectedRangeEndMs?: number;
 }
 
 export interface MediaFile {
@@ -144,6 +146,8 @@ export interface ProjectState {
     media: string[];
     text: string[];
   };
+  selectedRangeStart?: number; // Selected range start time in seconds
+  selectedRangeEnd?: number; // Selected range end time in seconds
 
   resolution: { width: number; height: number };
   fps: number;
