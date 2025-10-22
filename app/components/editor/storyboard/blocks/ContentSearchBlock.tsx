@@ -279,40 +279,42 @@ function ContentSearchRenderer(props: {
     // Get selected results
     const selectedResults = results.filter(r => selectedIds.has(r.segmentId));
     
-    // Group results into rows of COLUMNS_PER_ROW
-    const rows: typeof selectedResults[] = [];
-    for (let i = 0; i < selectedResults.length; i += COLUMNS_PER_ROW) {
-      rows.push(selectedResults.slice(i, i + COLUMNS_PER_ROW));
-    }
-    
-    // Create columnList blocks for each row
-    const blocksToInsert = rows.map(rowResults => ({
-      type: "columnList",
-      children: rowResults.map(result => ({
-        type: "column",
-        children: [
-          {
-            type: "videoSegment",
-            props: {
-              fileAlias: result.sourceFileAlias,
-              startTime: result.sourceStartMs / 1000,
-              endTime: result.sourceEndMs / 1000,
-              name: result.sourceFileAlias,
-              caption: result.visual,
-            },
-          }
-        ]
-      }))
-    }));
-    
-    // Insert blocks after the current block
+    // Create videoSegment blocks - insert them sequentially one by one
     const currentBlock = props.editor.getBlock(props.block.id);
-    if (currentBlock) {
-      props.editor.insertBlocks(blocksToInsert, currentBlock, "after");
+    if (!currentBlock) return;
+    
+    // Insert blocks one at a time in reverse order (so they appear in correct order)
+    for (let i = selectedResults.length - 1; i >= 0; i--) {
+      const result = selectedResults[i];
       
-      // Remove this search block
-      props.editor.removeBlocks([props.block.id]);
+      try {
+        props.editor.insertBlocks(
+          [
+            {
+              type: "videoSegment",
+              props: {
+                fileAlias: result.sourceFileAlias,
+                startTime: result.sourceStartMs / 1000,
+                endTime: result.sourceEndMs / 1000,
+                name: result.sourceFileAlias,
+                visual: result.visual,
+                transcript: "",
+                speaker: "",
+                initialExpanded: true,
+                url: "",
+              },
+            }
+          ],
+          currentBlock,
+          "after"
+        );
+      } catch (error) {
+        console.error("Error inserting videoSegment block:", error);
+      }
     }
+    
+    // Remove this search block
+    props.editor.removeBlocks([props.block.id]);
   };
 
   return (

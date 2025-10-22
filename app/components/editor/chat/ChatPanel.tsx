@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import type { StoryboardData } from "@/app/types/storyboard";
-import { getStoryboard, useAppSelector } from "@/app/store";
+import { useAppSelector } from "@/app/store";
 
 type ChatMode = "edit" | "plan";
 
@@ -20,7 +20,7 @@ interface ChatPanelProps {
   isConnecting: boolean;
   onSendMessage: (message: string, mode: ChatMode) => void;
   onOpenPlan?: (data: StoryboardData, summary: string, messageId?: string) => void;
-  onBuildPlan?: (data: StoryboardData, summary: string, mode: ChatMode, messageId?: string) => void;
+  onBuildPlan?: (messageId: string) => void;
   onSwitchLLM?: (provider: string, model: string) => void;
   currentLLM?: { provider: string; model: string } | null;
 }
@@ -131,25 +131,119 @@ export default function ChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Chat
+          Assistant
         </h2>
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isConnected
-                ? "bg-green-500"
+        <div className="flex items-center gap-3">
+          {/* LLM Selector Dropdown in Header */}
+          {onSwitchLLM && (
+            <div className="relative" ref={llmDropdownRef}>
+              <button
+                onClick={() => setIsLLMDropdownOpen(!isLLMDropdownOpen)}
+                disabled={!isConnected}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs
+                           text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800
+                           border border-gray-200 dark:border-gray-700 rounded-md
+                           hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300
+                           focus:outline-none focus:ring-1 focus:ring-gray-400
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           transition-colors duration-200"
+                title={currentLLM ? `${currentLLM.provider}: ${currentLLM.model}` : "Select LLM"}
+              >
+                <span className="font-mono">{getLLMDisplayName(currentLLM?.model)}</span>
+                <svg 
+                  className={`w-2.5 h-2.5 transition-transform duration-200 ${isLLMDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* LLM Dropdown Menu */}
+              {isLLMDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 py-1 bg-white dark:bg-gray-800 
+                                border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 min-w-[180px]">
+                  <button
+                    onClick={() => {
+                      onSwitchLLM('azure_openai', 'gpt-4.1');
+                      setIsLLMDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
+                                ${currentLLM?.model === 'gpt-4.1'
+                                  ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
+                                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                                transition-colors duration-150`}
+                  >
+                    <span>GPT-4.1</span>
+                    {currentLLM?.model === 'gpt-4.1' && (
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      onSwitchLLM('gemini', 'gemini-2.5-pro');
+                      setIsLLMDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
+                                ${currentLLM?.model === 'gemini-2.5-pro'
+                                  ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
+                                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                                transition-colors duration-150`}
+                  >
+                    <span>Gemini-2.5-Pro</span>
+                    {currentLLM?.model === 'gemini-2.5-pro' && (
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSwitchLLM('gemini', 'gemini-2.5-flash');
+                      setIsLLMDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
+                                ${currentLLM?.model === 'gemini-2.5-flash'
+                                  ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
+                                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                                transition-colors duration-150`}
+                  >
+                    <span>Gemini-2.5-Flash</span>
+                    {currentLLM?.model === 'gemini-2.5-flash' && (
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Connection Status */}
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isConnected
+                  ? "bg-green-500"
+                  : isConnecting
+                  ? "bg-yellow-500 animate-pulse"
+                  : "bg-red-500"
+              }`}
+            />
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {isConnected
+                ? "Connected"
                 : isConnecting
-                ? "bg-yellow-500 animate-pulse"
-                : "bg-red-500"
-            }`}
-          />
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {isConnected
-              ? "Connected"
-              : isConnecting
-              ? "Connecting..."
-              : "Disconnected"}
-          </span>
+                ? "Connecting..."
+                : "Disconnected"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -212,19 +306,7 @@ export default function ChatPanel({
                     )}
                     {onBuildPlan && (
                       <button
-                        onClick={async () => {
-                          // Switch to edit mode and trigger build
-                          setChatMode("edit");
-                          
-                          // Try to get edited version from IndexedDB first
-                          const savedStoryboard = await getStoryboard(message.id);
-                          
-                          // Use saved version if exists, otherwise use original message data
-                          const dataToUse = savedStoryboard || message.storyboardData!;
-                          
-                          console.log(`🔨 Building from ${savedStoryboard ? 'saved (edited)' : 'original'} storyboard`);
-                          onBuildPlan(dataToUse, message.content, "edit", message.id);
-                        }}
+                        onClick={() => onBuildPlan(message.id)}
                         className="flex-1 flex items-center justify-center gap-2 
                                    px-3 py-2 bg-green-600 hover:bg-green-700 
                                    text-white text-sm font-medium rounded
@@ -262,51 +344,34 @@ export default function ChatPanel({
 
       {/* Input Area with Mode Selector and Send Button */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        {/* Timecode Display */}
-        <div className="mb-2 flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md w-fit">
-          <svg
-            width="14"
-            height="15"
-            viewBox="0 0 14 15"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-gray-500 dark:text-gray-400"
-          >
-            <path
-              d="M5 1.29V1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v.29a7 7 0 1 1-4 0zM7 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zm.833-5.963v.387L9.289 9.38a.75.75 0 1 1-1.06 1.06L6.332 8.546V5.344a.75.75 0 0 1 1.5 0v2.193z"
-              fill="currentColor"
-            />
-          </svg>
-          <span className="text-xs font-mono text-gray-600 dark:text-gray-300">
-            {getTimecodeDisplay()}
-          </span>
-        </div>
+        {/* Timecode Display and Mode Selector on Same Line */}
+        <div className="mb-2 flex items-center gap-2">
+          {/* Timecode Display */}
+          <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md">
+            <svg
+              width="14"
+              height="15"
+              viewBox="0 0 14 15"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-gray-500 dark:text-gray-400"
+            >
+              <path
+                d="M5 1.29V1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v.29a7 7 0 1 1-4 0zM7 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zm.833-5.963v.387L9.289 9.38a.75.75 0 1 1-1.06 1.06L6.332 8.546V5.344a.75.75 0 0 1 1.5 0v2.193z"
+                fill="currentColor"
+              />
+            </svg>
+            <span className="text-xs font-mono text-gray-600 dark:text-gray-300">
+              {getTimecodeDisplay()}
+            </span>
+          </div>
 
-        {/* Text Input */}
-        <textarea
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type a message..."
-          disabled={!isConnected}
-          rows={3}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                   placeholder-gray-400 dark:placeholder-gray-500
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   disabled:opacity-50 disabled:cursor-not-allowed resize-none"
-        />
-        
-        {/* Bottom Controls */}
-        <div className="flex items-center justify-between mt-2">
-          {/* Left Controls Group */}
-          <div className="flex items-center gap-2">
-            {/* Mode Selector Dropdown */}
-            <div className="relative" ref={dropdownRef}>
+          {/* Mode Selector Dropdown */}
+          <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium
                          text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700
-                         border border-gray-300 dark:border-gray-600 rounded-md
+                         rounded-md
                          hover:bg-gray-200 dark:hover:bg-gray-600
                          focus:outline-none focus:ring-2 focus:ring-blue-500
                          transition-colors duration-200"
@@ -395,111 +460,36 @@ export default function ChatPanel({
                 </button>
               </div>
             )}
-            </div>
-
-            {/* LLM Selector Dropdown */}
-            {onSwitchLLM && (
-              <div className="relative" ref={llmDropdownRef}>
-                <button
-                  onClick={() => setIsLLMDropdownOpen(!isLLMDropdownOpen)}
-                  disabled={!isConnected}
-                  className="flex items-center gap-1 px-2 py-1.5 text-xs
-                             text-gray-500 dark:text-gray-500 bg-gray-50 dark:bg-gray-800
-                             border border-gray-200 dark:border-gray-700 rounded-md
-                             hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-400
-                             focus:outline-none focus:ring-1 focus:ring-gray-400
-                             disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors duration-200"
-                  title={currentLLM ? `${currentLLM.provider}: ${currentLLM.model}` : "Select LLM"}
-                >
-                  <span className="font-mono">{getLLMDisplayName(currentLLM?.model)}</span>
-                  <svg 
-                    className={`w-2.5 h-2.5 transition-transform duration-200 ${isLLMDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {/* LLM Dropdown Menu */}
-                {isLLMDropdownOpen && (
-                  <div className="absolute bottom-full left-0 mb-2 py-1 bg-white dark:bg-gray-800 
-                                  border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 min-w-[180px]">
-                    <button
-                      onClick={() => {
-                        onSwitchLLM('azure_openai', 'gpt-4.1');
-                        setIsLLMDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
-                                  ${currentLLM?.model === 'gpt-4.1'
-                                    ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
-                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
-                                  transition-colors duration-150`}
-                    >
-                      <span>GPT-4.1</span>
-                      {currentLLM?.model === 'gpt-4.1' && (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        onSwitchLLM('gemini', 'gemini-2.5-pro');
-                        setIsLLMDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
-                                  ${currentLLM?.model === 'gemini-2.5-pro'
-                                    ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
-                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
-                                  transition-colors duration-150`}
-                    >
-                      <span>Gemini-2.5-Pro</span>
-                      {currentLLM?.model === 'gemini-2.5-pro' && (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        onSwitchLLM('gemini', 'gemini-2.5-flash');
-                        setIsLLMDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left
-                                  ${currentLLM?.model === 'gemini-2.5-flash'
-                                    ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium" 
-                                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
-                                  transition-colors duration-150`}
-                    >
-                      <span>Gemini-2.5-Flash</span>
-                      {currentLLM?.model === 'gemini-2.5-flash' && (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+        </div>
 
-          {/* Send Button - Right */}
+        {/* Text Input */}
+        <textarea
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type a message..."
+          disabled={!isConnected}
+          rows={3}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                   placeholder-gray-400 dark:placeholder-gray-500
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                   disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+        />
+        
+        {/* Send Button */}
+        <div className="flex justify-end mt-2">
           <button
             onClick={sendMessage}
             disabled={!isConnected || !inputValue.trim()}
-            className="p-2 bg-blue-500 text-white rounded-lg
+            className="p-1 bg-blue-500 text-white rounded-md
                      hover:bg-blue-600 active:bg-blue-700
                      disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500
                      transition-colors duration-200"
             title="Send message"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
             </svg>
           </button>

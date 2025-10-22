@@ -23,7 +23,7 @@ export const Header = () => {
     }, [currentTime]);
 
     return (
-        <div className="flex items-center py-[0.2rem] w-full" ref={containerRef}>
+        <div className="timeline-header flex items-center py-[0.2rem] w-full" ref={containerRef}>
             <div className="relative h-8">
                 {tickMarkers.map((marker) => {
                     const isWholeSecond = Number.isInteger(marker) && marker !== 0;
@@ -41,11 +41,11 @@ export const Header = () => {
                             }}
                         >
                             {/* Tick line */}
-                            <div className={`w-px ${isWholeSecond ? 'h-7 bg-gray-400' : 'h-2 bg-gray-300'}`} />
+                            <div className={`w-px ${isWholeSecond ? 'h-7 bg-gray-500 dark:bg-gray-400' : 'h-2 bg-gray-400 dark:bg-gray-500'}`} />
 
                             {/* second labels */}
                             {isWholeSecond && (
-                                <span className="mt-1 text-[10px] text-gray-400 cursor-default">
+                                <span className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 cursor-default font-mono">
                                     {marker}s
                                 </span>
                             )}

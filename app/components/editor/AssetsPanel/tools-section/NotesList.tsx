@@ -12,19 +12,20 @@ interface SavedNote {
 }
 
 interface NotesListProps {
+    projectId: string;
     currentNoteId?: string;
     onNoteSelect: (id: string, data: StoryboardData) => void;
     onExport: (id: string, data: StoryboardData) => void;
 }
 
-export default function NotesList({ currentNoteId, onNoteSelect, onExport }: NotesListProps) {
+export default function NotesList({ projectId, currentNoteId, onNoteSelect, onExport }: NotesListProps) {
     const [notes, setNotes] = useState<SavedNote[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadNotes = async () => {
         setIsLoading(true);
         try {
-            const notesList = await listStoryboards();
+            const notesList = await listStoryboards(projectId);
             // Sort by timestamp, newest first
             notesList.sort((a, b) => b.timestamp - a.timestamp);
             setNotes(notesList);
@@ -38,7 +39,7 @@ export default function NotesList({ currentNoteId, onNoteSelect, onExport }: Not
 
     useEffect(() => {
         loadNotes();
-    }, []);
+    }, [projectId]);
 
     const handleDelete = async (id: string, title: string) => {
         if (!confirm(`Delete "${title}"?`)) return;

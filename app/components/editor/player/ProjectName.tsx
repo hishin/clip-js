@@ -47,16 +47,16 @@ export default function ProjectName() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
-                    className="text-2xl font-bold mt-4 capitalize tracking-wider bg-black w-full px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="text-2xl font-bold font-sans mt-4 capitalize tracking-wider bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                 />
             ) : (
                 <p
                     onClick={handleClick}
-                    className="text-2xl font-bold mt-4 capitalize tracking-wider cursor-pointer hover:bg-gray-800 px-2 py-1 rounded flex items-center"
+                    className="text-2xl font-bold font-sans mt-4 capitalize tracking-wider text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 px-2 py-1 rounded flex items-center"
                 >
                     {projectName}
-                    <svg className="w-4 h-4 ml-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-4 h-4 ml-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                     </svg>
                 </p>

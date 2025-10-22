@@ -33,21 +33,26 @@ export const Timeline = () => {
 
     // Helper function to determine track Y positions
     const getClipYPosition = useCallback((clip: any, type: 'media' | 'text') => {
+        // Get header height to offset track positions
+        const headerElement = timelineRef.current?.querySelector('.timeline-header');
+        const headerHeight = headerElement?.getBoundingClientRect().height || 0;
+        
+        let trackCenter = 0;
         if (type === 'text') {
-            return 24; // Text track center
+            trackCenter = 24; // Text track center relative to track area
         }
         if (type === 'media') {
             if (clip.type === 'image') {
-                return 72; // Image track center
+                trackCenter = 72; // Image track center
             }
             if (clip.type === 'video') {
-                return clip.track === 'b-roll' ? 120 : 168; // B-roll or A-roll
+                trackCenter = clip.track === 'b-roll' ? 120 : 168; // B-roll or A-roll
             }
             if (clip.type === 'audio') {
-                return 216; // Audio track center
+                trackCenter = 216; // Audio track center
             }
         }
-        return 0;
+        return trackCenter + headerHeight; // Add header offset so positions are relative to timeline container
     }, []);
 
     // Update selected clips based on marquee box intersection
@@ -408,85 +413,90 @@ export const Timeline = () => {
                     {/* Track Marker */}
                     <button
                         onClick={() => dispatch(setMarkerTrack(!enableMarkerTracking))}
-                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                        className="bg-white dark:bg-gray-800 rounded-md transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 mt-2 w-9 h-9 p-2"
+                        title={`Track Marker (T) - ${enableMarkerTracking ? 'Enabled' : 'Disabled'}`}
                     >
-                        {enableMarkerTracking ? <Image
-                            alt="cut"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/447546/yes-alt.svg"
-                        /> : <Image
-                            alt="cut"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/447315/dismiss.svg"
-                        />}
-                        <span className="ml-2">Track Marker <span className="text-xs">(T)</span></span>
+                        <Image
+                            alt="Track Marker"
+                            className={`h-auto w-auto max-w-[20px] max-h-[20px] dark:invert ${enableMarkerTracking ? 'opacity-100' : 'opacity-50'}`}
+                            height={20}
+                            width={20}
+                            src="/Smock_CheckmarkCircleOutline_18_N.svg"
+                        />
                     </button>
                     {/* Split */}
                     <button
                         onClick={handleSplit}
-                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                        className="bg-white dark:bg-gray-800 rounded-md transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 mt-2 w-9 h-9 p-2"
+                        title="Split (S)"
                     >
                         <Image
-                            alt="cut"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/509075/cut.svg"
+                            alt="Split"
+                            className="h-auto w-auto max-w-[20px] max-h-[20px] dark:invert"
+                            height={20}
+                            width={20}
+                            src="/Smock_Cut_18_N.svg"
                         />
-                        <span className="ml-2">Split <span className="text-xs">(S)</span></span>
                     </button>
                     {/* Duplicate */}
                     <button
                         onClick={handleDuplicate}
-                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                        className="bg-white dark:bg-gray-800 rounded-md transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 mt-2 w-9 h-9 p-2"
+                        title="Duplicate (D)"
                     >
                         <Image
-                            alt="cut"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/521623/duplicate.svg"
+                            alt="Duplicate"
+                            className="h-auto w-auto max-w-[20px] max-h-[20px] dark:invert"
+                            height={20}
+                            width={20}
+                            src="/Smock_Duplicate_18_N.svg"
                         />
-                        <span className="ml-2">Duplicate <span className="text-xs">(D)</span></span>
                     </button>
                     {/* Delete */}
                     <button
                         onClick={handleDelete}
-                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                        className="bg-white dark:bg-gray-800 rounded-md transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 mt-2 w-9 h-9 p-2"
+                        title="Delete (Del)"
                     >
                         <Image
                             alt="Delete"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/511788/delete-1487.svg"
+                            className="h-auto w-auto max-w-[20px] max-h-[20px] dark:invert"
+                            height={20}
+                            width={20}
+                            src="/Smock_DeleteOutline_18_N.svg"
                         />
-                        <span className="ml-2">Delete <span className="text-xs">(Del)</span></span>
                     </button>
                     {/* Clear Timeline */}
                     <button
                         onClick={handleClearTimeline}
-                        className="bg-white border rounded-md border-transparent transition-colors flex flex-row items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] mt-2 font-medium text-sm sm:text-base h-auto px-2 py-1 sm:w-auto"
+                        className="bg-white dark:bg-gray-800 rounded-md transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 mt-2 w-9 h-9 p-2"
+                        title="Clear Timeline"
                     >
                         <Image
                             alt="Clear Timeline"
-                            className="h-auto w-auto max-w-[20px] max-h-[20px]"
-                            height={30}
-                            width={30}
-                            src="https://www.svgrepo.com/show/532932/delete-left.svg"
+                            className="h-auto w-auto max-w-[20px] max-h-[20px] dark:invert"
+                            height={20}
+                            width={20}
+                            src="/Smock_OfferDelete_18_N.svg"
                         />
-                        <span className="ml-2">Clear Timeline</span>
                     </button>
                 </div>
 
                 {/* Timeline Zoom */}
-                <div className="flex flex-row justify-between items-center gap-2 mr-4">
-                    <label className="block text-sm mt-1 font-semibold text-white">Zoom</label>
-                    <span className="text-white text-lg">-</span>
+                <div className="flex flex-row items-center gap-2 mr-4">
+                    <button
+                        onClick={() => throttledZoom(Math.max(30, timelineZoom - 10))}
+                        className="rounded-md transition-opacity flex items-center justify-center opacity-60 hover:opacity-100 w-8 h-8 p-1.5"
+                        title="Zoom Out"
+                    >
+                        <Image
+                            alt="Zoom Out"
+                            className="h-auto w-auto dark:invert"
+                            height={18}
+                            width={18}
+                            src="/Smock_ZoomOut_18_N.svg"
+                        />
+                    </button>
                     <input
                         type="range"
                         min={30}
@@ -494,14 +504,26 @@ export const Timeline = () => {
                         step="1"
                         value={timelineZoom}
                         onChange={(e) => throttledZoom(Number(e.target.value))}
-                        className="w-[100px] bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:border-white-500"
+                        className="w-[100px] bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="text-white text-lg">+</span>
+                    <button
+                        onClick={() => throttledZoom(Math.min(120, timelineZoom + 10))}
+                        className="rounded-md transition-opacity flex items-center justify-center opacity-60 hover:opacity-100 w-8 h-8 p-1.5"
+                        title="Zoom In"
+                    >
+                        <Image
+                            alt="Zoom In"
+                            className="h-auto w-auto dark:invert"
+                            height={18}
+                            width={18}
+                            src="/Smock_ZoomIn_18_N.svg"
+                        />
+                    </button>
                 </div>
             </div>
 
             <div
-                className="relative overflow-x-auto w-full border-t border-gray-800 bg-[#1E1D21] z-10"
+                className="relative overflow-x-auto w-full border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 z-10"
                 ref={timelineRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -511,7 +533,7 @@ export const Timeline = () => {
                 {/* Timeline Header */}
                 <Header />
 
-                <div className="bg-[#1E1D21]"
+                <div className="bg-gray-50 dark:bg-gray-900"
 
                     style={{
                         width: "100%", /* or whatever width your timeline requires */
@@ -519,9 +541,10 @@ export const Timeline = () => {
                 >
                     {/* Timeline cursor */}
                     <div
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50"
+                        className="absolute top-0 bottom-0 w-[2px] z-50"
                         style={{
                             left: `${currentTime * timelineZoom}px`,
+                            backgroundColor: 'rgb(52, 91, 248)',
                         }}
                     />
                     {/* Selection box overlay */}

@@ -1,20 +1,22 @@
 import Image from 'next/image';
 
-export default function ExportButton({ onClick }: { onClick: () => void }) {
+export default function ExportButton({ onClick, isActive = false }: { onClick: () => void; isActive?: boolean }) {
 
     return (
         <button
-            className="bg-white border border-solid rounded border-transparent transition-colors flex flex-col items-center justify-center text-gray-800 hover:bg-[#ccc] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-auto py-2 px-2 sm:px-5 sm:w-auto"
+            className={`bg-white dark:bg-gray-800 rounded transition-colors flex items-center justify-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 w-full aspect-square p-1 ${
+                isActive ? 'border-l-4 border-blue-500' : ''
+            }`}
             onClick={onClick}
+            title="Export"
         >
             <Image
                 alt="Export"
-                className="h-auto w-auto max-w-[30px] max-h-[30px]"
-                height={30}
-                width={30}
-                src="https://www.svgrepo.com/show/486665/export.svg"
+                className="h-auto w-auto max-w-[20px] max-h-[20px] dark:invert"
+                height={20}
+                width={20}
+                src="/Smock_Download_18_N.svg"
             />
-            <span className="text-xs">Export</span>
         </button>
     );
 }

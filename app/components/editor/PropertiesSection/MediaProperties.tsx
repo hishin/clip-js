@@ -35,7 +35,7 @@ export default function MediaProperties() {
                                     startTime: Number(e.target.value),
                                     endTime: mediaFile.endTime
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -49,7 +49,7 @@ export default function MediaProperties() {
                                     startTime: mediaFile.startTime,
                                     endTime: Number(e.target.value)
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                     </div>
@@ -69,7 +69,7 @@ export default function MediaProperties() {
                                     positionStart: Number(e.target.value),
                                     positionEnd: Number(e.target.value) + (mediaFile.positionEnd - mediaFile.positionStart)
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -82,7 +82,7 @@ export default function MediaProperties() {
                                 onChange={(e) => onUpdateMedia(mediaFile.id, {
                                     positionEnd: Number(e.target.value)
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                     </div>
@@ -98,7 +98,7 @@ export default function MediaProperties() {
                                 step="10"
                                 value={mediaFile.x || 0}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { x: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -108,7 +108,7 @@ export default function MediaProperties() {
                                 step="10"
                                 value={mediaFile.y || 0}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { y: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -118,7 +118,7 @@ export default function MediaProperties() {
                                 step="10"
                                 value={mediaFile.width || 100}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { width: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -128,7 +128,7 @@ export default function MediaProperties() {
                                 step="10"
                                 value={mediaFile.height || 100}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { height: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -137,7 +137,7 @@ export default function MediaProperties() {
                                 type="number"
                                 value={mediaFile.zIndex || 0}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { zIndex: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -148,7 +148,7 @@ export default function MediaProperties() {
                                 max="100"
                                 value={mediaFile.opacity}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { opacity: Number(e.target.value) })}
-                                className="w-full bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:border-white-500"
+                                className="w-full bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>
@@ -158,7 +158,7 @@ export default function MediaProperties() {
                     <h4 className="font-semibold">Audio Properties</h4>
                     <div className="grid grid-cols-1 gap-4">
                         <div>
-                            <label className="block text-sm mb-2 text-white">Volume</label>
+                            <label className="block text-sm mb-2 text-gray-900 dark:text-gray-100">Volume</label>
                             <input
                                 type="range"
                                 min="0"
@@ -166,7 +166,7 @@ export default function MediaProperties() {
                                 step="1"
                                 value={mediaFile.volume}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { volume: Number(e.target.value) })}
-                                className="w-full bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:border-white-500"
+                                className="w-full bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                         {/* TODO: Add playback speed */}
@@ -179,7 +179,7 @@ export default function MediaProperties() {
                                 step="0.1"
                                 value={mediaFile.playbackSpeed || 1}
                                 onChange={(e) => onUpdateMedia(mediaFile.id, { playbackSpeed: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div> */}
                     </div>

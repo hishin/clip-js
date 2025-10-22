@@ -33,6 +33,7 @@ import toast from "react-hot-toast";
 import CenterViewTabs from '@/app/components/editor/player/CenterViewTabs';
 import StoryboardEditor from '@/app/components/editor/storyboard/StoryboardEditor';
 import type { StoryboardData } from '@/app/types/storyboard';
+import { blockNoteToSimpleText, flexiblePlanToBlockNote } from '@/app/utils/storyboardConverter';
 export default function Project({ params }: { params: { id: string } }) {
     const { id } = params;
     const dispatch = useAppDispatch();
@@ -323,14 +324,19 @@ export default function Project({ params }: { params: { id: string } }) {
                     if (data.type === "plan_response") {
                         console.log(`📋 Plan response received:`, data.plan?.title);
                         
-                        // Create StoryboardData from flexible plan
+                        // Convert FlexiblePlan to BlockNote format immediately
+                        const blockNoteBlocks = flexiblePlanToBlockNote(data.plan, projectStateRef.current.sourceFiles);
+                        
                         const storyboardData: StoryboardData = {
                             plan: data.plan,
-                            // document will be generated in editor component
+                            document: { blocks: blockNoteBlocks }  // Always include BlockNote format
                         };
                         
-                        // Add message with storyboardData (triggers Open Plan button)
+                        // Save to IndexedDB immediately with BlockNote format
                         const planMessageId = crypto.randomUUID();
+                        await saveStoryboard(planMessageId, id, storyboardData);
+                        
+                        // Add message with storyboardData
                         const planMessage: Message = {
                             id: planMessageId,
                             type: "assistant",
@@ -468,25 +474,28 @@ export default function Project({ params }: { params: { id: string } }) {
         setActiveCenterView("storyboard");
     };
 
-    const handleBuildPlan = (data: StoryboardData, summary: string, mode: "edit" | "plan", messageId?: string) => {
-        console.log(`🔨 Building timeline from plan`);
+    const handleBuildPlan = async (messageId: string) => {
+        // Always load from IndexedDB - single source of truth
+        const storyboard = await getStoryboard(messageId);
         
-        // Extract plan (prefer document if user edited it, otherwise use plan)
-        const plan = data.document || data.plan;
-        
-        if (!plan) {
-            console.error("No plan data available to build");
-            toast.error("No plan data available to build");
+        if (!storyboard?.document?.blocks) {
+            console.error("No storyboard found in IndexedDB");
+            toast.error("Storyboard not found");
             return;
         }
         
-        // Construct build command as JSON string (to be parsed by agent)
-        const buildCommandContent = JSON.stringify({
-            command: "build_plan",
-            plan: plan
-        });
+        console.log(`🔨 Building timeline from storyboard (ID: ${messageId})`);
         
-        // Send as user_message with the provided mode
+        // Convert BlockNote to text format for backend
+        const planToSend = blockNoteToSimpleText(storyboard.document.blocks);
+        
+        if (!planToSend) {
+            console.error("Failed to convert plan to text");
+            toast.error("Failed to convert plan");
+            return;
+        }
+        
+        // Send build command via WebSocket
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             const timelineContext = buildTimelineContext(
                 projectStateRef.current,
@@ -495,13 +504,17 @@ export default function Project({ params }: { params: { id: string } }) {
             
             const message = {
                 type: "user_message",
-                content: buildCommandContent,
+                content: JSON.stringify({
+                    command: "build_plan",
+                    plan: planToSend
+                }),
                 context: timelineContext,
-                mode: mode
+                mode: "edit"  // Always "edit" mode for builds
             };
             
-            console.log(`📤 WS SEND [build_plan as user_message]:`, message);
+            console.log(`📤 WS SEND [build_plan]:`, message);
             wsRef.current.send(JSON.stringify(message));
+            toast.success("Building timeline...", { duration: 2000 });
         } else {
             console.error("WebSocket not connected");
             toast.error("Cannot build: WebSocket not connected");
@@ -539,21 +552,36 @@ export default function Project({ params }: { params: { id: string } }) {
             }
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar - Buttons */}
-                <div className="flex-[0.1] min-w-[60px] max-w-[100px] border-r border-gray-700 overflow-y-auto p-4">
+                <div className="w-[52px] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto p-1.5">
                     <div className="flex flex-col space-y-2">
                         <HomeButton />
-                        <TextButton onClick={() => handleFocus("text")} />
-                        <LibraryButton onClick={() => handleFocus("media")} />
-                        <NotesButton onClick={() => handleFocus("notes")} />
-                        <ExportButton onClick={() => handleFocus("export")} />
-                        <ChatButton onClick={() => setActiveRightPanel(activeRightPanel === "chat" ? "properties" : "chat")} />
+                        <TextButton 
+                            onClick={() => handleFocus("text")} 
+                            isActive={activeSection === "text"}
+                        />
+                        <LibraryButton 
+                            onClick={() => handleFocus("media")} 
+                            isActive={activeSection === "media"}
+                        />
+                        <NotesButton 
+                            onClick={() => handleFocus("notes")} 
+                            isActive={activeSection === "notes"}
+                        />
+                        <ExportButton 
+                            onClick={() => handleFocus("export")} 
+                            isActive={activeSection === "export"}
+                        />
+                        <ChatButton 
+                            onClick={() => setActiveRightPanel(activeRightPanel === "chat" ? "properties" : "chat")}
+                            isActive={activeRightPanel === "chat"}
+                        />
                         {/* TODO: add shortcuts guide but in a better way */}
                         {/* <ShortcutsButton onClick={() => handleFocus("export")} /> */}
                     </div>
                 </div>
 
                 {/* Add media and text */}
-                <div className="flex-[0.3] min-w-[200px] border-r border-gray-800 overflow-y-auto p-4">
+                <div className="flex-[0.3] min-w-[200px] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto p-4">
                     {activeSection === "media" && (
                         <div>
                             <h2 className="text-lg flex flex-row gap-2 items-center justify-center font-semibold mb-2">
@@ -597,7 +625,7 @@ export default function Project({ params }: { params: { id: string } }) {
                                                 
                                                 // Generate new ID for imported note
                                                 const noteId = `imported-${Date.now()}`;
-                                                await saveStoryboard(noteId, data);
+                                                await saveStoryboard(noteId, id, data);
                                                 
                                                 setCurrentStoryboardId(noteId);
                                                 setCurrentStoryboard(data);
@@ -617,6 +645,7 @@ export default function Project({ params }: { params: { id: string } }) {
                                 </button>
                             </div>
                             <NotesList 
+                                projectId={id}
                                 currentNoteId={currentStoryboardId}
                                 onNoteSelect={(noteId, data) => {
                                     setCurrentStoryboardId(noteId);
@@ -664,7 +693,7 @@ export default function Project({ params }: { params: { id: string } }) {
                                     <StoryboardEditor
                                         key={currentStoryboardId || 'default'}
                                         initialData={currentStoryboard}
-                                        projectId={id}
+                                        storyboardId={currentStoryboardId}
                                         onSave={async (blocks) => {
                                             console.log('Saving storyboard blocks:', blocks);
                                             // BlockNote format: wrap blocks array in document object
@@ -674,19 +703,20 @@ export default function Project({ params }: { params: { id: string } }) {
                                             
                                             // Save to IndexedDB for persistence
                                             if (updated && currentStoryboardId) {
-                                                await saveStoryboard(currentStoryboardId, updated);
+                                                await saveStoryboard(currentStoryboardId, id, updated);
                                             }
                                         }}
+                                        onBuild={handleBuildPlan}
                                     />
                                 ) : (
-                                    <div className="flex items-center justify-center h-full bg-gray-900">
-                                        <div className="text-center text-gray-500">
+                                    <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
+                                        <div className="text-center text-gray-400 dark:text-gray-500">
                                             <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                                                       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                             </svg>
-                                            <p className="text-lg font-medium text-gray-400">No Storyboard Yet</p>
-                                            <p className="text-sm mt-2 text-gray-500">Use Plan Mode in chat to create a video storyboard</p>
+                                            <p className="text-lg font-medium text-gray-500 dark:text-gray-400">No Storyboard Yet</p>
+                                            <p className="text-sm mt-2 text-gray-600 dark:text-gray-500">Use Plan Mode in chat to create a video storyboard</p>
                                         </div>
                                     </div>
                                 )}
@@ -696,7 +726,7 @@ export default function Project({ params }: { params: { id: string } }) {
                 </div>
 
                 {/* Right Sidebar - Element Properties or Chat */}
-                <div className="flex-[0.4] min-w-[200px] border-l border-gray-800 overflow-hidden">
+                <div className="flex-[0.4] min-w-[200px] border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
                     {activeRightPanel === "chat" ? (
                         <ChatPanel
                             messages={messages}
@@ -709,7 +739,7 @@ export default function Project({ params }: { params: { id: string } }) {
                             currentLLM={currentLLM}
                         />
                     ) : (
-                        <div className="overflow-y-auto p-4 h-full">
+                        <div className="overflow-y-auto p-4 h-full bg-white dark:bg-gray-800">
                             {activeElement === "media" && (
                                 <div>
                                     <h2 className="text-lg font-semibold mb-4">Media Properties</h2>
@@ -727,19 +757,19 @@ export default function Project({ params }: { params: { id: string } }) {
                 </div>
             </div>
             {/* Timeline and Assistant at bottom */}
-            <div className="flex flex-col border-t border-gray-500">
+            <div className="flex flex-col border-t border-gray-200 dark:border-gray-700">
                 <div className="flex flex-row">
-                    <div className=" bg-darkSurfacePrimary flex flex-col items-center justify-center mt-20">
+                    <div className="bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center mt-20">
 
                         {/* Text Track */}
                         <div className="relative h-12">
                             <div className="flex items-center gap-2 p-2">
                                 <Image
                                     alt="Text"
-                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    className="h-auto w-auto max-w-[24px] max-h-[24px] opacity-60 dark:invert"
                                     height={24}
                                     width={24}
-                                    src="https://www.svgrepo.com/show/535686/text.svg"
+                                    src="/Smock_Text_18_N.svg"
                                 />
                             </div>
                         </div>
@@ -749,10 +779,10 @@ export default function Project({ params }: { params: { id: string } }) {
                             <div className="flex items-center gap-2 p-2">
                                 <Image
                                     alt="Image"
-                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    className="h-auto w-auto max-w-[24px] max-h-[24px] opacity-60 dark:invert"
                                     height={24}
                                     width={24}
-                                    src="https://www.svgrepo.com/show/535454/image.svg"
+                                    src="/Smock_Image_18_N.svg"
                                 />
                             </div>
                         </div>
@@ -762,12 +792,12 @@ export default function Project({ params }: { params: { id: string } }) {
                             <div className="flex flex-col items-center justify-center p-1">
                                 <Image
                                     alt="Video V2"
-                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    className="h-auto w-auto max-w-[24px] max-h-[24px] opacity-60 dark:invert"
                                     height={24}
                                     width={24}
-                                    src="https://www.svgrepo.com/show/532727/video.svg"
+                                    src="/Smock_MovieCamera_18_N.svg"
                                 />
-                                <span className="text-[8px] text-gray-400 mt-[-2px]">V2</span>
+                                <span className="text-[8px] text-gray-500 dark:text-gray-400 mt-[-2px] font-mono">V2</span>
                             </div>
                         </div>
 
@@ -776,12 +806,12 @@ export default function Project({ params }: { params: { id: string } }) {
                             <div className="flex flex-col items-center justify-center p-1">
                                 <Image
                                     alt="Video V1"
-                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    className="h-auto w-auto max-w-[24px] max-h-[24px] opacity-60 dark:invert"
                                     height={24}
                                     width={24}
-                                    src="https://www.svgrepo.com/show/532727/video.svg"
+                                    src="/Smock_MovieCamera_18_N.svg"
                                 />
-                                <span className="text-[8px] text-gray-400 mt-[-2px]">V1</span>
+                                <span className="text-[8px] text-gray-500 dark:text-gray-400 mt-[-2px] font-mono">V1</span>
                             </div>
                         </div>
 
@@ -790,10 +820,10 @@ export default function Project({ params }: { params: { id: string } }) {
                             <div className="flex items-center gap-2 p-2">
                                 <Image
                                     alt="Audio"
-                                    className="invert h-auto w-auto max-w-[24px] max-h-[24px]"
+                                    className="h-auto w-auto max-w-[24px] max-h-[24px] opacity-60 dark:invert"
                                     height={24}
                                     width={24}
-                                    src="https://www.svgrepo.com/show/532708/music.svg"
+                                    src="/Smock_Audio_18_N.svg"
                                 />
                             </div>
                         </div>

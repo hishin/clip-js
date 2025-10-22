@@ -25,8 +25,9 @@ import { useAppSelector } from '@/app/store';
 
 interface StoryboardEditorProps {
   initialData: StoryboardData;
-  projectId: string;
+  storyboardId: string;
   onSave?: (blocks: any[]) => Promise<void>;
+  onBuild?: (storyboardId: string) => void;
 }
 
 // Create custom schema with VideoSegment and ContentSearch, then add multi-column support
@@ -65,8 +66,9 @@ const getCustomSlashMenuItems = (
 
 export default function StoryboardEditor({ 
   initialData, 
-  projectId, 
-  onSave 
+  storyboardId,
+  onSave,
+  onBuild
 }: StoryboardEditorProps) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   
@@ -128,8 +130,27 @@ export default function StoryboardEditor({
   
   return (
     <div className="relative h-full flex flex-col bg-gray-950">
-      {/* Save status indicator */}
-      <div className="sticky top-0 z-10 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-4 py-2 flex items-center justify-end">
+      {/* Header with Build Button and Save Status */}
+      <div className="sticky top-0 z-10 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+        {/* Build Button - Left Side */}
+        {onBuild && (
+          <button
+            onClick={() => onBuild(storyboardId)}
+            className="flex items-center gap-2 px-3 py-1.5 
+                       bg-green-600 hover:bg-green-700 
+                       text-white text-sm font-medium rounded
+                       transition-colors duration-200"
+            title="Build timeline from current storyboard"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Build
+          </button>
+        )}
+        
+        {/* Save Status - Right Side */}
         <div className="flex items-center gap-2 text-xs text-gray-400">
           {saveStatus === 'saving' && (
             <>

@@ -193,7 +193,11 @@ export const listProjects = async () => {
 };
 
 // Storyboard storage functions
-export const saveStoryboard = async (storyboardId: string, data: any) => {
+export const saveStoryboard = async (
+  storyboardId: string,
+  projectId: string,
+  data: any
+) => {
   if (typeof window === "undefined") return null;
   try {
     const db = await setupDB();
@@ -201,12 +205,15 @@ export const saveStoryboard = async (storyboardId: string, data: any) => {
 
     const storyboardData = {
       id: storyboardId,
+      projectId: projectId,
       data: data,
       timestamp: Date.now(),
     };
 
     await db.put("storyboards", storyboardData);
-    console.log(`✅ Saved storyboard ${storyboardId} to IndexedDB`);
+    console.log(
+      `✅ Saved storyboard ${storyboardId} to IndexedDB for project ${projectId}`
+    );
     return storyboardId;
   } catch (error) {
     console.error("Error saving storyboard:", error);
@@ -231,13 +238,14 @@ export const getStoryboard = async (storyboardId: string) => {
   }
 };
 
-export const listStoryboards = async () => {
+export const listStoryboards = async (projectId: string) => {
   if (typeof window === "undefined") return [];
   try {
     const db = await setupDB();
     if (!db) return [];
     const results = await db.getAll("storyboards");
-    return results.map((item) => ({
+    const filtered = results.filter((item) => item.projectId === projectId);
+    return filtered.map((item) => ({
       id: item.id,
       timestamp: item.timestamp,
       title: item.data?.plan?.title || "Untitled Plan",

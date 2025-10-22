@@ -28,7 +28,7 @@ export default function TextProperties() {
                         <textarea
                             value={textElement.text}
                             onChange={(e) => onUpdateText(textElement.id, { text: e.target.value })}
-                            className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                            className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             rows={3}
                         />
                     </div>
@@ -48,7 +48,7 @@ export default function TextProperties() {
                                     positionStart: Number(e.target.value),
                                     positionEnd: Number(e.target.value) + (textElement.positionEnd - textElement.positionStart)
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -61,7 +61,7 @@ export default function TextProperties() {
                                 onChange={(e) => onUpdateText(textElement.id, {
                                     positionEnd: Number(e.target.value)
                                 })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                     </div>
@@ -77,7 +77,7 @@ export default function TextProperties() {
                                 step="10"
                                 value={textElement.x || 0}
                                 onChange={(e) => onUpdateText(textElement.id, { x: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -87,7 +87,7 @@ export default function TextProperties() {
                                 step="10"
                                 value={textElement.y || 0}
                                 onChange={(e) => onUpdateText(textElement.id, { y: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         <div>
@@ -97,7 +97,7 @@ export default function TextProperties() {
                                 step="5"
                                 value={textElement.fontSize || 24}
                                 onChange={(e) => onUpdateText(textElement.id, { fontSize: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div>
                         {/* TODO: add z-index */}
@@ -107,16 +107,16 @@ export default function TextProperties() {
                                 type="number"
                                 value={textElement.zIndex || 0}
                                 onChange={(e) => onUpdateText(textElement.id, { zIndex: Number(e.target.value) })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             />
                         </div> */}
                         {/* Font Type */}
                         <div >
-                            <label className="block text-sm font-medium text-white">Font Type</label>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">Font Type</label>
                             <select
                                 value={textElement.font}
                                 onChange={(e) => onUpdateText(textElement.id, { font: e.target.value })}
-                                className="w-full p-2 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             >
                                 <option value="Arial">Arial</option>
                                 <option value="Inter">Inter</option>
@@ -135,7 +135,7 @@ export default function TextProperties() {
                                 type="color"
                                 value={textElement.color || '#ffffff'}
                                 onChange={(e) => onUpdateText(textElement.id, { color: e.target.value })}
-                                className="w-full h-10 bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-white-500 focus:border-white-500"
+                                className="w-full h-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                         <div>
@@ -147,7 +147,7 @@ export default function TextProperties() {
                                 step="1"
                                 value={textElement.opacity}
                                 onChange={(e) => onUpdateText(textElement.id, { opacity: Number(e.target.value) })}
-                                className="w-full bg-darkSurfacePrimary border border-white border-opacity-10 shadow-md text-white rounded focus:outline-none focus:border-white-500"
+                                className="w-full bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 shadow-md rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>

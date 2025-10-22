@@ -12,15 +12,15 @@ export default function CenterViewTabs({
   hasStoryboard 
 }: CenterViewTabsProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-800">
+    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div className="flex items-center gap-1">
         {/* Preview Tab */}
         <button
           onClick={() => onViewChange("preview")}
           className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-all ${
             activeView === "preview"
-              ? "bg-gray-900 text-white border-b-2 border-blue-500"
-              : "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
+              ? "bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-b-2 border-blue-500"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,10 +38,10 @@ export default function CenterViewTabs({
           disabled={!hasStoryboard}
           className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition-all ${
             activeView === "storyboard"
-              ? "bg-gray-900 text-white border-b-2 border-purple-500"
+              ? "bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-b-2 border-purple-500"
               : hasStoryboard
-              ? "text-gray-400 hover:text-gray-200 hover:bg-gray-700"
-              : "text-gray-600 cursor-not-allowed opacity-50"
+              ? "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+              : "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50"
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
