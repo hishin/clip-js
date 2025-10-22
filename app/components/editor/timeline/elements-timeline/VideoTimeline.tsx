@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo } from "react";
 import Moveable, { OnScale, OnDrag, OnResize, OnRotate } from "react-moveable";
 import { useAppSelector } from "@/app/store";
-import { setActiveElement, setActiveElementIndex, setMediaFiles, setSelectedClips, addToSelection } from "@/app/store/slices/projectSlice";
+import { setActiveElement, setActiveElementIndex, setMediaFiles, setSelectedClips, setSelectedRange, addToSelection } from "@/app/store/slices/projectSlice";
 import { memo, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
@@ -43,8 +43,19 @@ export default function VideoTimeline({ track = "a-roll" }: { track?: "a-roll" |
         if (element === 'media') {
             const clipId = index as unknown as string;
             
+            // Find the clicked clip
+            const clip = mediaFiles.find(c => c.id === clipId);
+            
             // Add to selection
             dispatch(setSelectedClips({ media: [clipId], text: [] }));
+            
+            // Update selected range
+            if (clip) {
+                dispatch(setSelectedRange({ 
+                    start: clip.positionStart, 
+                    end: clip.positionEnd 
+                }));
+            }
             
             // Keep backward compatibility
             dispatch(setActiveElement('media') as any);

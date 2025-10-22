@@ -1,7 +1,7 @@
 import React, { useRef, useCallback, useMemo } from "react";
 import Moveable, { OnScale, OnDrag, OnResize, OnRotate } from "react-moveable";
 import { useAppSelector } from "@/app/store";
-import { setActiveElement, setActiveElementIndex, setTextElements, setSelectedClips, addToSelection } from "@/app/store/slices/projectSlice";
+import { setActiveElement, setActiveElementIndex, setTextElements, setSelectedClips, setSelectedRange, addToSelection } from "@/app/store/slices/projectSlice";
 import { memo, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import Image from "next/image";
@@ -44,8 +44,19 @@ export default function TextTimeline() {
         if (element === 'text') {
             const clipId = index as unknown as string;
             
+            // Find the clicked text element
+            const textElement = textElements.find(t => t.id === clipId);
+            
             // Add to selection
             dispatch(setSelectedClips({ media: [], text: [clipId] }));
+            
+            // Update selected range
+            if (textElement) {
+                dispatch(setSelectedRange({ 
+                    start: textElement.positionStart, 
+                    end: textElement.positionEnd 
+                }));
+            }
             
             // Keep backward compatibility
             dispatch(setActiveElement('text') as any);

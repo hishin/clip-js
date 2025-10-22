@@ -1,6 +1,9 @@
 import { getFile } from "@/app/store";
-import { setMediaFiles } from "@/app/store/slices/projectSlice";
-import { MediaFile, Track } from "@/app/types";
+import {
+  setMediaFiles,
+  setTextElements,
+} from "@/app/store/slices/projectSlice";
+import { MediaFile, Track, TextElement } from "@/app/types";
 import {
   categorizeFile,
   generateNextClipId,
@@ -8,6 +11,120 @@ import {
   getDefaultTrackForMediaType,
 } from "@/app/utils/utils";
 import { ActionHandler, ActionSchema } from "./types";
+
+/**
+ * Check if a clip overlaps with the insertion range
+ */
+function hasOverlap(
+  clipStart: number,
+  clipEnd: number,
+  insertStart: number,
+  insertEnd: number
+): boolean {
+  return clipStart < insertEnd && clipEnd > insertStart;
+}
+
+/**
+ * Split an A-roll clip at the insertion point, adjusting source timing
+ */
+function splitArollClip(
+  clip: MediaFile,
+  insertStart: number,
+  insertEnd: number,
+  insertedDuration: number,
+  existingClips: MediaFile[]
+): MediaFile[] {
+  const results: MediaFile[] = [];
+
+  // Clip before insertion (if any)
+  if (clip.positionStart < insertStart) {
+    const beforeDuration = insertStart - clip.positionStart;
+    results.push({
+      ...clip,
+      id: generateNextClipId(existingClips, "video"),
+      positionEnd: insertStart,
+      endTime: clip.startTime + beforeDuration,
+    });
+  }
+
+  // Clip after insertion (if any)
+  if (clip.positionEnd > insertStart) {
+    const skippedDuration = insertStart - clip.positionStart;
+    results.push({
+      ...clip,
+      id: generateNextClipId([...existingClips, ...results], "video"),
+      positionStart: insertEnd,
+      positionEnd: clip.positionEnd + insertedDuration,
+      startTime: clip.startTime + skippedDuration,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Trim overlapping clips on overlay tracks (b-roll, text, image, audio)
+ */
+function trimOverlappingClip(
+  clip: MediaFile,
+  insertStart: number,
+  insertEnd: number
+): MediaFile[] {
+  const results: MediaFile[] = [];
+
+  // Keep portion before insertion (if any)
+  if (clip.positionStart < insertStart) {
+    const beforeDuration = insertStart - clip.positionStart;
+    results.push({
+      ...clip,
+      id: `${clip.id}-before`,
+      positionEnd: insertStart,
+      endTime: clip.startTime + beforeDuration,
+    });
+  }
+
+  // Keep portion after insertion (if any)
+  if (clip.positionEnd > insertEnd) {
+    const skippedDuration = insertEnd - clip.positionStart;
+    results.push({
+      ...clip,
+      id: `${clip.id}-after`,
+      positionStart: insertEnd,
+      startTime: clip.startTime + skippedDuration,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Trim overlapping text elements
+ */
+function trimOverlappingTextElement(
+  text: TextElement,
+  insertStart: number,
+  insertEnd: number
+): TextElement[] {
+  const results: TextElement[] = [];
+
+  if (text.positionStart < insertStart) {
+    results.push({
+      ...text,
+      id: `${text.id}-before`,
+      positionEnd: insertStart,
+    });
+  }
+
+  if (text.positionEnd > insertEnd) {
+    results.push({
+      ...text,
+      id: `${text.id}-after`,
+      positionStart: insertEnd,
+    });
+  }
+
+  return results;
+}
 
 /**
  * Internal handler for inserting a single clip into the timeline.
@@ -101,16 +218,151 @@ export const _insert_single_clip_in_timeline: ActionHandler = async (
       `📎 insert_clip_in_timeline: Created MediaFile with id ${mediaId}, timeline: ${parameters.timelineStart}-${parameters.timelineEnd}s`
     );
 
-    // Update state (like AddMedia.tsx:49)
-    const updatedMediaFiles = [...projectState.mediaFiles, newMediaFile];
+    // Track-aware insertion logic
+    const insertionPoint = parameters.timelineStart;
+    const insertionEnd = parameters.timelineEnd;
+    const insertedDuration = insertionEnd - insertionPoint;
+    const insertedTrack = track;
+
+    let updatedMediaFiles: MediaFile[];
+    let updatedTextElements: TextElement[] = projectState.textElements;
+
+    if (insertedTrack === "a-roll") {
+      // A-ROLL: Ripple edit
+      console.log(
+        `📎 insert_clip_in_timeline: A-roll insertion - applying ripple edit`
+      );
+      const processedMediaFiles: MediaFile[] = [];
+
+      for (const clip of projectState.mediaFiles) {
+        if (
+          clip.track === "a-roll" &&
+          insertionPoint > clip.positionStart &&
+          insertionPoint < clip.positionEnd
+        ) {
+          // Split overlapping A-roll clip (only when inserting IN THE MIDDLE)
+          console.log(
+            `📎 insert_clip_in_timeline: Splitting overlapping A-roll clip ${clip.id}`
+          );
+          const splitClips = splitArollClip(
+            clip,
+            insertionPoint,
+            insertionEnd,
+            insertedDuration,
+            [...projectState.mediaFiles, newMediaFile, ...processedMediaFiles]
+          );
+          processedMediaFiles.push(...splitClips);
+        } else if (
+          (clip.track === "a-roll" ||
+            clip.track === "b-roll" ||
+            clip.track === "image") &&
+          clip.positionStart >= insertionPoint
+        ) {
+          // Ripple forward
+          console.log(
+            `📎 insert_clip_in_timeline: Rippling ${clip.track} clip ${clip.id} forward by ${insertedDuration}s`
+          );
+          processedMediaFiles.push({
+            ...clip,
+            positionStart: clip.positionStart + insertedDuration,
+            positionEnd: clip.positionEnd + insertedDuration,
+          });
+        } else {
+          // Keep unchanged (audio, or clips before insertion)
+          processedMediaFiles.push(clip);
+        }
+      }
+
+      // Ripple text elements
+      updatedTextElements = projectState.textElements.map((text) => {
+        if (text.positionStart >= insertionPoint) {
+          console.log(
+            `📎 insert_clip_in_timeline: Rippling text ${text.id} forward by ${insertedDuration}s`
+          );
+          return {
+            ...text,
+            positionStart: text.positionStart + insertedDuration,
+            positionEnd: text.positionEnd + insertedDuration,
+          };
+        }
+        return text;
+      });
+
+      updatedMediaFiles = [...processedMediaFiles, newMediaFile];
+    } else {
+      // B-ROLL, IMAGE, AUDIO: Overwrite edit
+      console.log(
+        `📎 insert_clip_in_timeline: ${insertedTrack} insertion - applying overwrite edit`
+      );
+      const processedMediaFiles: MediaFile[] = [];
+
+      for (const clip of projectState.mediaFiles) {
+        if (
+          clip.track === insertedTrack &&
+          hasOverlap(
+            clip.positionStart,
+            clip.positionEnd,
+            insertionPoint,
+            insertionEnd
+          )
+        ) {
+          // Trim overlapping clips on same track
+          console.log(
+            `📎 insert_clip_in_timeline: Trimming overlapping ${clip.track} clip ${clip.id}`
+          );
+          const trimmedClips = trimOverlappingClip(
+            clip,
+            insertionPoint,
+            insertionEnd
+          );
+          processedMediaFiles.push(...trimmedClips);
+        } else {
+          // Keep all other clips unchanged
+          processedMediaFiles.push(clip);
+        }
+      }
+
+      // For text track, trim overlapping text elements
+      if (insertedTrack === "text") {
+        updatedTextElements = projectState.textElements.flatMap((text) => {
+          if (
+            hasOverlap(
+              text.positionStart,
+              text.positionEnd,
+              insertionPoint,
+              insertionEnd
+            )
+          ) {
+            console.log(
+              `📎 insert_clip_in_timeline: Trimming overlapping text ${text.id}`
+            );
+            return trimOverlappingTextElement(
+              text,
+              insertionPoint,
+              insertionEnd
+            );
+          }
+          return [text];
+        });
+      }
+
+      updatedMediaFiles = [...processedMediaFiles, newMediaFile];
+    }
+
     dispatch(setMediaFiles(updatedMediaFiles));
+
+    // Update text elements if they were modified
+    if (updatedTextElements !== projectState.textElements) {
+      dispatch(setTextElements(updatedTextElements));
+    }
+
     console.log(
       `📎 insert_clip_in_timeline: Dispatched state update, timeline now has ${updatedMediaFiles.length} media files`
     );
 
     // Calculate duration (same logic as projectSlice.ts:37-44)
     const mediaDurations = updatedMediaFiles.map((v) => v.positionEnd);
-    const textDurations = projectState.textElements.map((v) => v.positionEnd);
+    const textDurations = updatedTextElements.map((v) => v.positionEnd);
     const duration = Math.max(0, ...mediaDurations, ...textDurations);
 
     console.log(
@@ -122,7 +374,7 @@ export const _insert_single_clip_in_timeline: ActionHandler = async (
       mediaFileId: mediaId,
       timeline: {
         mediaFiles: updatedMediaFiles,
-        textElements: projectState.textElements,
+        textElements: updatedTextElements,
         duration: duration,
       },
     };
@@ -386,15 +638,16 @@ export const insert_clips_in_timeline: ActionHandler = async (
         ...context.projectState,
         mediaFiles:
           result.timeline?.mediaFiles || context.projectState.mediaFiles,
+        textElements:
+          result.timeline?.textElements || context.projectState.textElements,
       },
     };
   }
 
   const finalMediaFiles = currentContext.projectState.mediaFiles;
+  const finalTextElements = currentContext.projectState.textElements;
   const mediaDurations = finalMediaFiles.map((v) => v.positionEnd);
-  const textDurations = context.projectState.textElements.map(
-    (v) => v.positionEnd
-  );
+  const textDurations = finalTextElements.map((v) => v.positionEnd);
   const duration = Math.max(0, ...mediaDurations, ...textDurations);
 
   console.log(
@@ -408,7 +661,7 @@ export const insert_clips_in_timeline: ActionHandler = async (
     results,
     timeline: {
       mediaFiles: finalMediaFiles,
-      textElements: context.projectState.textElements,
+      textElements: finalTextElements,
       duration,
     },
   };

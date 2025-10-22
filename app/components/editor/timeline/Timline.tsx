@@ -12,6 +12,7 @@ import { throttle } from 'lodash';
 import GlobalKeyHandlerProps from "../../../components/editor/keys/GlobalKeyHandlerProps";
 import { generateNextClipId } from "@/app/utils/utils";
 import toast from "react-hot-toast";
+import { MediaFile, TextElement } from "@/app/types";
 export const Timeline = () => {
     const { currentTime, timelineZoom, enableMarkerTracking, activeElement, activeElementIndex, mediaFiles, textElements, duration, isPlaying, selectedClips } = useAppSelector((state) => state.projectState);
     const dispatch = useDispatch();
@@ -268,11 +269,104 @@ export const Timeline = () => {
             if (!confirmed) return;
         }
         
-        // Filter out selected media clips
-        const newMediaFiles = mediaFiles.filter(clip => !media.includes(clip.id));
+        // Get all selected media clips
+        const selectedMediaClips = mediaFiles.filter(clip => media.includes(clip.id));
         
-        // Filter out selected text elements
-        const newTextElements = textElements.filter(txt => !text.includes(txt.id));
+        // Check if any a-roll clips are being deleted
+        const hasArollDeletion = selectedMediaClips.some(clip => clip.track === 'a-roll');
+        
+        let newMediaFiles: MediaFile[];
+        let newTextElements: TextElement[];
+        
+        if (hasArollDeletion) {
+            // TRACK-AWARE RIPPLE DELETE: Ripple a-roll, b-roll, image, and text tracks
+            console.log('🗑️ A-roll deletion detected - applying ripple delete');
+            
+            // Sort selected clips by position (left to right)
+            const sortedSelectedClips = [...selectedMediaClips].sort(
+                (a, b) => a.positionStart - b.positionStart
+            );
+            
+            // Calculate cumulative offset for ripple
+            let cumulativeOffset = 0;
+            const deletionRanges: Array<{ start: number; end: number; duration: number }> = [];
+            
+            // Build deletion ranges
+            for (const clip of sortedSelectedClips) {
+                deletionRanges.push({
+                    start: clip.positionStart,
+                    end: clip.positionEnd,
+                    duration: clip.positionEnd - clip.positionStart
+                });
+            }
+            
+            // Process all media files
+            newMediaFiles = [];
+            for (const clip of mediaFiles) {
+                // Skip deleted clips
+                if (media.includes(clip.id)) {
+                    continue;
+                }
+                
+                // Calculate ripple offset for this clip
+                let rippleOffset = 0;
+                for (const range of deletionRanges) {
+                    // If clip starts after a deletion range, add that range's duration to offset
+                    if (clip.positionStart >= range.end) {
+                        rippleOffset += range.duration;
+                    }
+                }
+                
+                // Apply ripple to a-roll, b-roll, and image tracks
+                if (
+                    (clip.track === 'a-roll' || clip.track === 'b-roll' || clip.track === 'image') &&
+                    rippleOffset > 0
+                ) {
+                    console.log(`🗑️ Rippling ${clip.track} clip ${clip.id} by -${rippleOffset}s`);
+                    newMediaFiles.push({
+                        ...clip,
+                        positionStart: clip.positionStart - rippleOffset,
+                        positionEnd: clip.positionEnd - rippleOffset
+                    });
+                } else {
+                    // Keep clip unchanged (audio or clips before deletion)
+                    newMediaFiles.push(clip);
+                }
+            }
+            
+            // Process text elements (ripple them too)
+            newTextElements = textElements
+                .filter(txt => !text.includes(txt.id)) // Remove deleted text elements
+                .map(txt => {
+                    // Calculate ripple offset for this text element
+                    let rippleOffset = 0;
+                    for (const range of deletionRanges) {
+                        if (txt.positionStart >= range.end) {
+                            rippleOffset += range.duration;
+                        }
+                    }
+                    
+                    if (rippleOffset > 0) {
+                        console.log(`🗑️ Rippling text ${txt.id} by -${rippleOffset}s`);
+                        return {
+                            ...txt,
+                            positionStart: txt.positionStart - rippleOffset,
+                            positionEnd: txt.positionEnd - rippleOffset
+                        };
+                    }
+                    return txt;
+                });
+            
+        } else {
+            // NON-RIPPLE DELETE: Only b-roll/image/audio - just remove them (leave gaps)
+            console.log('🗑️ No a-roll deletion - removing clips without ripple');
+            
+            // Filter out selected media clips
+            newMediaFiles = mediaFiles.filter(clip => !media.includes(clip.id));
+            
+            // Filter out selected text elements
+            newTextElements = textElements.filter(txt => !text.includes(txt.id));
+        }
         
         // Update state
         dispatch(setMediaFiles(newMediaFiles));
