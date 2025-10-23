@@ -62,6 +62,8 @@ export interface MediaFile {
   volume: number;
   zIndex: number;
   track?: Track; // NEW: optional track assignment (a-roll=primary narration, b-roll=overlay footage)
+  suggestedState?: "suggested_addition" | "suggested_deletion"; // Mark clips as temporary suggestions
+  suggestionId?: string; // Link to the original suggestion that created this clip
 
   // Optional visual settings
   x?: number;

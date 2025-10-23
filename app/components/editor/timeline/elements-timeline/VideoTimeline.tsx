@@ -119,7 +119,11 @@ export default function VideoTimeline({ track = "a-roll" }: { track?: "a-roll" |
                             }}
                             onClick={() => handleClick('media', clip.id)}
                             className={`timeline-clip absolute rounded-md top-1 h-10 text-white text-sm flex items-center justify-center cursor-pointer ${
-                                selectedClips.media.includes(clip.id) 
+                                clip.suggestedState === 'suggested_addition'
+                                    ? 'bg-green-900/40 border-2 border-green-500 ring-2 ring-green-500/50' 
+                                    : clip.suggestedState === 'suggested_deletion'
+                                    ? 'bg-red-900/40 border-2 border-red-500 ring-2 ring-red-500/50 opacity-75'
+                                    : selectedClips.media.includes(clip.id) 
                                     ? 'bg-[#3F3F46] border-2 border-blue-500' 
                                     : 'bg-[#27272A] border border-gray-500 border-opacity-50'
                             }`}

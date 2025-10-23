@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getFile, storeProject, useAppDispatch, useAppSelector, saveStoryboard, getStoryboard } from "../../../store";
 import { getProject } from "../../../store";
 import { setCurrentProject, updateProject } from "../../../store/slices/projectsSlice";
-import { rehydrate, setMediaFiles } from '../../../store/slices/projectSlice';
+import { rehydrate, setMediaFiles, setSourceFiles } from '../../../store/slices/projectSlice';
 import { setActiveSection } from "../../../store/slices/projectSlice";
 import AddText from '../../../components/editor/AssetsPanel/tools-section/AddText';
 import AddMedia from '../../../components/editor/AssetsPanel/AddButtons/UploadMedia';
@@ -22,11 +22,13 @@ import TextProperties from "../../../components/editor/PropertiesSection/TextPro
 import { Timeline } from "../../../components/editor/timeline/Timline";
 import TimelineAssistant from "../../../components/editor/timeline/TimelineAssistant";
 import { PreviewPlayer } from "../../../components/editor/player/remotion/Player";
-import { MediaFile } from "@/app/types";
+import { MediaFile, FileInfo } from "@/app/types";
 import ExportList from "../../../components/editor/AssetsPanel/tools-section/ExportList";
+import { useBRollSuggestions } from "../../../components/editor/timeline/commands";
 import Image from "next/image";
 import ProjectName from "../../../components/editor/player/ProjectName";
 import { ChatPanel, Message } from "@/app/components/editor/chat";
+import { AssistantPanel } from "@/app/components/editor/assistant";
 import { createWebSocketConnection, buildTimelineContext } from "@/app/utils/backend";
 import { executeAction, actionSchemas } from "@/app/actions";
 import toast from "react-hot-toast";
@@ -40,7 +42,13 @@ export default function Project({ params }: { params: { id: string } }) {
     const projectState = useAppSelector((state) => state.projectState);
     const { currentProjectId } = useAppSelector((state) => state.projects);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeRightPanel, setActiveRightPanel] = useState<"properties" | "chat">("properties");
+    const [activeRightPanel, setActiveRightPanel] = useState<"properties" | "chat" | "assistant">("properties");
+    
+    // Assistant panel content state
+    const [assistantContent, setAssistantContent] = useState<{
+        type: "broll" | "silence" | "similar" | null;
+        data: any;
+    }>({ type: null, data: null });
     
     // WebSocket state
     const [messages, setMessages] = useState<Message[]>([]);
@@ -53,6 +61,18 @@ export default function Project({ params }: { params: { id: string } }) {
     const [activeCenterView, setActiveCenterView] = useState<"preview" | "storyboard">("preview");
     const [currentStoryboard, setCurrentStoryboard] = useState<StoryboardData | null>(null);
     const [currentStoryboardId, setCurrentStoryboardId] = useState<string>('');
+    
+    // Command hooks with callbacks for panel control
+    const brollCommand = useBRollSuggestions({
+        onOpen: () => {
+            setAssistantContent({ type: "broll", data: null });
+            setActiveRightPanel("assistant");
+        },
+        onClose: () => {
+            setActiveRightPanel("properties");
+            setAssistantContent({ type: null, data: null });
+        }
+    });
     
     // Refs to prevent stale closure in WebSocket handlers
     const projectStateRef = useRef(projectState);
@@ -85,10 +105,19 @@ export default function Project({ params }: { params: { id: string } }) {
                 if (project) {
                     dispatch(rehydrate(project));
 
+                    // Load blob URLs for mediaFiles
                     dispatch(setMediaFiles(await Promise.all(
                         project.mediaFiles.map(async (media: MediaFile) => {
                             const file = await getFile(media.fileId);
                             return { ...media, src: URL.createObjectURL(file) };
+                        })
+                    )));
+
+                    // Load blob URLs for sourceFiles
+                    dispatch(setSourceFiles(await Promise.all(
+                        project.sourceFiles.map(async (source: FileInfo) => {
+                            const file = await getFile(source.fileId);
+                            return { ...source, src: URL.createObjectURL(file) };
                         })
                     )));
                 }
@@ -320,6 +349,26 @@ export default function Project({ params }: { params: { id: string } }) {
                         return;
                     }
                     
+                    // Handle b-roll suggestions from backend
+                    if (data.type === "broll_suggestions") {
+                        console.log(`🎬 B-roll suggestions received:`, data.suggestions?.length);
+                        
+                        // Transform backend suggestions to frontend format
+                        const suggestions = data.suggestions.map((s: any) => ({
+                            id: `${s.file}-${s.start}-${s.end}`,  // Composite key for debugging
+                            fileAlias: s.file,
+                            sourceStartMs: s.start * 1000,  // Convert seconds to ms
+                            sourceEndMs: s.end * 1000,      // Convert seconds to ms
+                            description: s.description
+                        }));
+                        
+                        // Pass suggestions to the hook
+                        brollCommand.setSuggestions(suggestions);
+                        
+                        toast.success(`Found ${suggestions.length} b-roll suggestions`);
+                        return;
+                    }
+                    
                     // Handle plan responses from backend
                     if (data.type === "plan_response") {
                         console.log(`📋 Plan response received:`, data.plan?.title);
@@ -537,6 +586,40 @@ export default function Project({ params }: { params: { id: string } }) {
         wsRef.current.send(JSON.stringify(message));
     };
 
+    // ============================================================================
+    // TIMELINE ASSISTANT COMMANDS
+    // Pattern for all command hooks: hook.request(sendCommandWithContext)
+    // Each command hook provides message data, this function adds timeline context
+    // ============================================================================
+    
+    const sendCommandWithContext = (messageData: any) => {
+        if (!wsRef.current || !isWsConnected) {
+            toast.error("Not connected to backend");
+            return;
+        }
+
+        const timelineContext = buildTimelineContext(
+            projectStateRef.current,
+            projectStateRef.current.currentTime
+        );
+
+        const message = {
+            ...messageData,
+            context: timelineContext
+        };
+
+        console.log(`📤 WS SEND [${messageData.type}]:`, message);
+        wsRef.current.send(JSON.stringify(message));
+    };
+
+    const handleRequestBRoll = () => {
+        brollCommand.request(sendCommandWithContext);
+    };
+    
+    // Add more command handlers here following the same pattern:
+    // const handleRemoveSilence = () => silenceCommand.request(sendCommandWithContext);
+    // const handleFindSimilar = () => similarCommand.request(sendCommandWithContext);
+
     return (
         <div className="flex flex-col h-screen select-none">
             {/* Loading screen */}
@@ -572,7 +655,7 @@ export default function Project({ params }: { params: { id: string } }) {
                             isActive={activeSection === "export"}
                         />
                         <ChatButton 
-                            onClick={() => setActiveRightPanel(activeRightPanel === "chat" ? "properties" : "chat")}
+                            onClick={() => setActiveRightPanel("chat")}
                             isActive={activeRightPanel === "chat"}
                         />
                         {/* TODO: add shortcuts guide but in a better way */}
@@ -725,35 +808,81 @@ export default function Project({ params }: { params: { id: string } }) {
                     </div>
                 </div>
 
-                {/* Right Sidebar - Element Properties or Chat */}
-                <div className="flex-[0.4] min-w-[200px] border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-                    {activeRightPanel === "chat" ? (
-                        <ChatPanel
-                            messages={messages}
-                            isConnected={isWsConnected}
-                            isConnecting={isWsConnecting}
-                            onSendMessage={handleSendMessage}
-                            onOpenPlan={handleOpenPlan}
-                            onBuildPlan={handleBuildPlan}
-                            onSwitchLLM={handleSwitchLLM}
-                            currentLLM={currentLLM}
-                        />
-                    ) : (
-                        <div className="overflow-y-auto p-4 h-full bg-white dark:bg-gray-800">
-                            {activeElement === "media" && (
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-4">Media Properties</h2>
-                                    <MediaProperties />
-                                </div>
-                            )}
-                            {activeElement === "text" && (
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-4">Text Properties</h2>
-                                    <TextProperties />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                {/* Right Sidebar - Element Properties, Chat, or Assistant */}
+                <div className="flex-[0.4] min-w-[200px] border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
+                    {/* Tab Headers */}
+                    <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                        <button
+                            onClick={() => setActiveRightPanel("properties")}
+                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors
+                                ${activeRightPanel === "properties"
+                                    ? "bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                                }`}
+                        >
+                            Properties
+                        </button>
+                        <button
+                            onClick={() => setActiveRightPanel("chat")}
+                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors
+                                ${activeRightPanel === "chat"
+                                    ? "bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                                }`}
+                        >
+                            Chat
+                        </button>
+                        <button
+                            onClick={() => setActiveRightPanel("assistant")}
+                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors
+                                ${activeRightPanel === "assistant"
+                                    ? "bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                                }`}
+                        >
+                            Assistant
+                        </button>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="flex-1 overflow-hidden">
+                        {activeRightPanel === "chat" && (
+                            <ChatPanel
+                                messages={messages}
+                                isConnected={isWsConnected}
+                                isConnecting={isWsConnecting}
+                                onSendMessage={handleSendMessage}
+                                onOpenPlan={handleOpenPlan}
+                                onBuildPlan={handleBuildPlan}
+                                onSwitchLLM={handleSwitchLLM}
+                                currentLLM={currentLLM}
+                            />
+                        )}
+                        
+                        {activeRightPanel === "properties" && (
+                            <div className="overflow-y-auto p-4 h-full bg-white dark:bg-gray-800">
+                                {activeElement === "media" && (
+                                    <div>
+                                        <h2 className="text-lg font-semibold mb-4">Media Properties</h2>
+                                        <MediaProperties />
+                                    </div>
+                                )}
+                                {activeElement === "text" && (
+                                    <div>
+                                        <h2 className="text-lg font-semibold mb-4">Text Properties</h2>
+                                        <TextProperties />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {activeRightPanel === "assistant" && (
+                            <AssistantPanel
+                                contentType={assistantContent.type}
+                                brollCommand={brollCommand}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
             {/* Timeline and Assistant at bottom */}
@@ -836,6 +965,9 @@ export default function Project({ params }: { params: { id: string } }) {
                     onSendMessage={handleSendMessage}
                     onSwitchLLM={handleSwitchLLM}
                     currentLLM={currentLLM}
+                    commandHandlers={{
+                        suggestBRoll: handleRequestBRoll,
+                    }}
                 />
             </div>
         </div >

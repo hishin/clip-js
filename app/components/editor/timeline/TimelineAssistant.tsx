@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useAppSelector } from "@/app/store";
 
 type AssistantMode = "edit" | "plan" | "assistant";
@@ -9,6 +9,21 @@ interface TimelineAssistantProps {
   onSendMessage: (message: string, mode: AssistantMode) => void;
   onSwitchLLM?: (provider: string, model: string) => void;
   currentLLM?: { provider: string; model: string } | null;
+  commandHandlers?: {
+    suggestBRoll?: () => void;
+    removeSilence?: () => void;
+    autoBleep?: () => void;
+    findSimilar?: () => void;
+    addMusic?: () => void;
+    vibeEdit?: () => void;
+  };
+}
+
+interface Command {
+  id: string;
+  label: string;
+  description: string;
+  handler: () => void;
 }
 
 export default function TimelineAssistant({
@@ -16,13 +31,96 @@ export default function TimelineAssistant({
   onSendMessage,
   onSwitchLLM,
   currentLLM,
+  commandHandlers,
 }: TimelineAssistantProps) {
   const { currentTime, selectedRangeStart, selectedRangeEnd } = useAppSelector(
     (state) => state.projectState
   );
   const [inputValue, setInputValue] = useState("");
   const [isLLMDropdownOpen, setIsLLMDropdownOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const llmDropdownRef = useRef<HTMLDivElement>(null);
+  const commandPaletteRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Command handlers (skeleton implementations)
+  const handleSuggestBRoll = useCallback(() => {
+    console.log('Suggest B-Roll command executed');
+    commandHandlers?.suggestBRoll?.();
+    setIsCommandPaletteOpen(false);
+  }, [commandHandlers]);
+
+  const handleFindSimilarClips = useCallback(() => {
+    // TODO: Implement find similar clips logic
+    console.log('Find similar clips command executed');
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleRemoveSilence = useCallback(() => {
+    // TODO: Implement remove silence logic
+    console.log('Remove silence command executed');
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleAddBackgroundMusic = useCallback(() => {
+    // TODO: Implement add background music logic
+    console.log('Add background music command executed');
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleAutoBleep = useCallback(() => {
+    // TODO: Implement auto bleep logic
+    console.log('Auto bleep command executed');
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  const handleVibeEdit = useCallback(() => {
+    // TODO: Implement vibe edit logic
+    console.log('Vibe Edit command executed');
+    setIsCommandPaletteOpen(false);
+  }, []);
+
+  // Define available commands
+  const commands: Command[] = useMemo(() => [
+    {
+      id: 'suggest-broll',
+      label: 'Suggest B-Roll',
+      description: 'Get suggestions for B-Roll footage',
+      handler: handleSuggestBRoll,
+    },
+    {
+      id: 'find-similar',
+      label: 'Find similar clips',
+      description: 'Find clips similar to the selected one',
+      handler: handleFindSimilarClips,
+    },
+    {
+      id: 'remove-silence',
+      label: 'Remove silence',
+      description: 'Automatically remove silent sections',
+      handler: handleRemoveSilence,
+    },
+    {
+      id: 'add-music',
+      label: 'Add background music',
+      description: 'Add background music to your video',
+      handler: handleAddBackgroundMusic,
+    },
+    {
+      id: 'auto-bleep',
+      label: 'Auto bleep',
+      description: 'Automatically bleep profanity',
+      handler: handleAutoBleep,
+    },
+    {
+      id: 'vibe-edit',
+      label: 'Vibe Edit',
+      description: 'Vibe edit your timeline with natural language prompts',
+      handler: handleVibeEdit,
+    },
+  ], [handleSuggestBRoll, handleFindSimilarClips, handleRemoveSilence, handleAddBackgroundMusic, handleAutoBleep, handleVibeEdit]);
 
   // Close LLM dropdown when clicking outside
   useEffect(() => {
@@ -42,6 +140,35 @@ export default function TimelineAssistant({
       };
     }
   }, [isLLMDropdownOpen]);
+
+  // Close command palette when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        commandPaletteRef.current &&
+        !commandPaletteRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+
+    if (isCommandPaletteOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isCommandPaletteOpen]);
+
+  // Filter commands when input changes
+  useEffect(() => {
+    // TODO: Implement fuzzy search using lightweight LLM
+    // For now, return all commands (no filtering)
+    setFilteredCommands(commands);
+    setSelectedCommandIndex(0); // Reset selection when commands change
+  }, [inputValue, commands]);
 
   // Format seconds to timecode (MM:SS)
   const formatTimecode = (seconds: number): string => {
@@ -67,8 +194,34 @@ export default function TimelineAssistant({
     setInputValue("");
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle command palette keyboard navigation
+    if (isCommandPaletteOpen && filteredCommands.length > 0) {
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedCommandIndex((prev) => 
+            prev < filteredCommands.length - 1 ? prev + 1 : 0
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedCommandIndex((prev) => 
+            prev > 0 ? prev - 1 : filteredCommands.length - 1
+          );
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (filteredCommands[selectedCommandIndex]) {
+            filteredCommands[selectedCommandIndex].handler();
+          }
+          return;
+        case "Escape":
+          e.preventDefault();
+          setIsCommandPaletteOpen(false);
+          return;
+      }
+    } else if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -77,6 +230,21 @@ export default function TimelineAssistant({
   // Helper function to get short display name for LLM
   const getLLMDisplayName = (model: string | undefined) => {
     return model || "LLM";
+  };
+
+  // Handle input focus
+  const handleInputFocus = () => {
+    setIsCommandPaletteOpen(true);
+  };
+
+  // Handle input blur (with delay to allow command clicks)
+  const handleInputBlur = () => {
+    // Delay closing to allow clicking on commands
+    setTimeout(() => {
+      if (!commandPaletteRef.current?.matches(':hover')) {
+        setIsCommandPaletteOpen(false);
+      }
+    }, 150);
   };
 
   return (
@@ -101,21 +269,58 @@ export default function TimelineAssistant({
           </span>
         </div>
 
-        {/* Text Input */}
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask AI assistant..."
-          disabled={!isConnected}
-          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
-                   bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                   placeholder-gray-400 dark:placeholder-gray-500
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   text-sm"
-        />
+        {/* Text Input with Command Palette */}
+        <div className="flex-1 relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            placeholder="Ask AI assistant..."
+            disabled={!isConnected}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                     placeholder-gray-400 dark:placeholder-gray-500
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     text-sm"
+          />
+
+          {/* Command Palette */}
+          {isCommandPaletteOpen && filteredCommands.length > 0 && (
+            <div
+              ref={commandPaletteRef}
+              className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 
+                       border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg 
+                       overflow-hidden z-50 animate-slideUp"
+            >
+              <div className="max-h-[240px] overflow-y-auto">
+                {filteredCommands.map((command, index) => (
+                  <button
+                    key={command.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      command.handler();
+                    }}
+                    className={`w-full px-4 py-2.5 text-left transition-colors duration-150
+                              ${
+                                index === selectedCommandIndex
+                                  ? "bg-blue-50 dark:bg-blue-900 border-l-2 border-blue-500"
+                                  : "hover:bg-gray-100 dark:hover:bg-gray-700 border-l-2 border-transparent"
+                              }`}
+                  >
+                    <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                      {command.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* LLM Selector Dropdown */}
         {onSwitchLLM && (
